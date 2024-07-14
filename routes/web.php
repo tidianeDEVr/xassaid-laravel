@@ -1,24 +1,15 @@
 <?php
 
 use App\Http\Controllers\AudioController;
+use App\Http\Controllers\OverviewController;
 use App\Http\Controllers\SecurityController;
 use App\Http\Middleware\EnsureUserIsAdmin;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', function () {
-    // User::create([
-    //     'email' => 'cheikhtiindiaye@gmail.com',
-    //     'name' => 'Cheikh Tidiane NDIAYE',
-    //     'password' => Hash::make('Ichyoboy01')
-    // ]);
-    // Role::create(['libelle' => 'ROLE_ADMIN']);
-    // Role::create(['libelle' => 'ROLE_USER']);
-    return view('pages/overview');
-})->name('dashboard')->middleware(EnsureUserIsAdmin::class);
+Route::get('/', [OverviewController::class, 'dashboard'])->name('dashboard')->middleware(EnsureUserIsAdmin::class);
 
-Route::get('/audios', function () {
-    return view('pages/audios');
-})->middleware(EnsureUserIsAdmin::class);
+Route::get('/audios', [AudioController::class, 'renderAudios'])->middleware(EnsureUserIsAdmin::class);
+Route::post('/audios', [AudioController::class, 'createAudio'])->middleware(EnsureUserIsAdmin::class);
 
 Route::get('/library', function () {
     return view('pages/library');

@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\AudioCategoriesRequest;
+use App\Http\Requests\AudioRequest;
+use App\Models\Audio;
 use App\Models\AudioCategory;
 
 class AudioController extends Controller
@@ -13,6 +15,15 @@ class AudioController extends Controller
         $categories = AudioCategory::all();
         return view('categories.audios', ['categories' => $categories]);
     }
+
+    public function renderAudios()
+    {
+        $categories = AudioCategory::all();
+        $audios = Audio::all();
+        return view('pages.audios', ['categories' => $categories, 'audios' => $audios]);
+    }
+
+
 
     public function createCategory(AudioCategoriesRequest $request)
     {
@@ -28,6 +39,25 @@ class AudioController extends Controller
         }
         $category->save();
         return redirect('/categories/audios');
+    }
+
+    public function createAudio(AudioRequest $request)
+    {
+        $data = $request->validated();
+        $audio = new Audio($data);
+        $audio->slug = $this->generateSlug($audio->title);
+        if ($request->hasFile('audio')) {
+            $destination = 'public/audios';
+            $audioFile = $request->file('audio');
+            $name = time() . '.' . $audioFile->getClientOriginalExtension();
+            $audioFile->storePubliclyAs($destination, $name);
+            $audio->pathToFile = $name;
+        }
+        $category = AudioCategory::where('slug', $data['category'])->first();
+        if ($category) $audio->category_id = $category->id;
+        $audio->save();
+
+        return redirect('/audios');
     }
 
     function generateSlug($string)

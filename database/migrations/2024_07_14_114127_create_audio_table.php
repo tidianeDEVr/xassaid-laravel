@@ -16,7 +16,6 @@ return new class extends Migration
             $table->string('slug');
             $table->string('title');
             $table->string('pathToFile');
-            $table->string('coverImagePath')->nullable();
             $table->timestamps();
 
             $table->foreignId('category_id')->nullable()->constrained('audio_categories');

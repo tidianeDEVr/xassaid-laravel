@@ -29,10 +29,11 @@
       <div class="modal-dialog modal-lg">
         <div class="modal-content">
           <form
-            class="needs-validation"
             enctype="multipart/form-data"
             method="post"
+            action="{{url('/audios')}}"
           >
+          @csrf
             <div class="modal-header">
               <h1 class="modal-title fs-5" id="audioModalLabel">
                 Ajouter d'un nouveau fichier
@@ -53,6 +54,7 @@
                   <input
                     type="text"
                     required
+                    name="title"
                     class="form-control"
                     id="title"
                   />
@@ -64,36 +66,27 @@
                   <select
                     class="form-select"
                     aria-label="Default select example"
+                    name="category"
                   >
-                    <option selected>Open this select menu</option>
-                    <option value="1">One</option>
-                    <option value="2">Two</option>
-                    <option value="3">Three</option>
+                    <option selected value="0">-- Veuillez choisir une catégorie --</option>
+                    @foreach($categories as $category)
+                    <option value="{{$category->slug}}">{{$category->type}} - {{$category->title}}</option>
+                    @endforeach
                   </select>
                 </div>
               </div>
               <div class="mb-3">
-                <label for="audioFile" class="form-label"
+                <label for="audio" class="form-label"
                   ><span class="text-danger">*</span>Fichier audio -
                   MP3</label
                 >
                 <input
                   class="form-control"
                   type="file"
-                  id="audioFile"
+                  id="audio"
+                  name="audio"
                   accept="audio/*"
                   required
-                />
-              </div>
-              <div class="mb-3">
-                <label for="coverImage" class="form-label"
-                  >Image de couverture</label
-                >
-                <input
-                  class="form-control"
-                  type="file"
-                  id="coverImage"
-                  accept="image/*"
                 />
               </div>
             </div>
@@ -118,14 +111,17 @@
           <th>ID</th>
           <th>Titre</th>
           <th>Slug</th>
+          <th>Catégorie</th>
           <th>Actions</th>
         </tr>
       </thead>
       <tbody>
+        @foreach ($audios as $index=>$audio)
         <tr>
-          <td>Tiger Nixon</td>
-          <td>System Architect</td>
-          <td>Edinburgh</td>
+          <td>{{$index+1}}</td>
+          <td>{{$audio->title}}</td>
+          <td>{{$audio->slug}}</td>
+          <td>{{$audio->category->type}} - {{$audio->category->title}}</td>
           <td>
             <div class="d-flex gap-3">
               <button class="btn btn-sm btn-outline-danger">
@@ -140,6 +136,7 @@
             </div>
           </td>
         </tr>
+        @endforeach
       </tbody>
     </table>
   </div>

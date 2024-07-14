@@ -38,7 +38,8 @@
   <body class="bg-light">
     <nav class="navbar navbar-expand-lg navbar-light bg-light border-bottom">
         <div class="container">
-            <a class="navbar-brand" href="/">Xassaid</a>
+            <a class="navbar-brand" href="/">
+            <img src="{{asset('xassaid_dark.png')}}" alt="xassaid logo" width="130"></a>
             <ul class="navbar-nav mr-auto">
             <li class="nav-item">
                 <a class="nav-link" href="/">Tableau de bord</a>

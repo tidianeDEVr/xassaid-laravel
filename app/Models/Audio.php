@@ -18,6 +18,12 @@ class Audio extends Model
         'slug',
         'title',
         'pathToFile',
-        'coverImagePath'
     ];
+
+    protected $with = ['category'];
+
+    public function category()
+    {
+        return $this->belongsTo(AudioCategory::class);
+    }
 }

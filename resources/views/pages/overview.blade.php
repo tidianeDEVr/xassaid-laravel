@@ -17,7 +17,7 @@
                 <div
                 class="px-3 fs-5 d-flex align-items-center justify-content-center"
                 >
-                <span>0 Fichiers Audios</span>
+                <span>{{$overview['audiosCounts']}} Fichiers Audios</span>
                 </div>
             </div>
             </div>
@@ -55,7 +55,7 @@
                 <div
                 class="px-3 fs-5 d-flex align-items-center justify-content-center"
                 >
-                <span>0 Podcasts</span>
+                <span>{{$overview['categoriesCounts']}} Catégories</span>
                 </div>
             </div>
             </div>
@@ -74,7 +74,7 @@
                 <div
                 class="px-3 fs-5 d-flex align-items-center justify-content-center"
                 >
-                <span>0 Utilisateurs</span>
+                <span>{{$overview['usersCounts']}} Utilisateurs</span>
                 </div>
             </div>
             </div>
