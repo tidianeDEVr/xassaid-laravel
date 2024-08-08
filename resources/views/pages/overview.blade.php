@@ -17,7 +17,7 @@
                 <div
                 class="px-3 fs-5 d-flex align-items-center justify-content-center"
                 >
-                <span>{{$overview['audiosCounts']}} Fichiers Audios</span>
+                <span>{{$overview['audiosCounts']}} fichiers audios</span>
                 </div>
             </div>
             </div>
@@ -36,7 +36,7 @@
                 <div
                 class="px-3 fs-5 d-flex align-items-center justify-content-center"
                 >
-                <span>0 Fichiers PDFs</span>
+                <span>{{$overview['filesCounts']}} fichiers PDFs</span>
                 </div>
             </div>
             </div>
@@ -55,7 +55,7 @@
                 <div
                 class="px-3 fs-5 d-flex align-items-center justify-content-center"
                 >
-                <span>{{$overview['categoriesCounts']}} Catégories</span>
+                <span>{{$overview['categoriesCounts']}} catégories</span>
                 </div>
             </div>
             </div>
@@ -74,7 +74,7 @@
                 <div
                 class="px-3 fs-5 d-flex align-items-center justify-content-center"
                 >
-                <span>{{$overview['usersCounts']}} Utilisateurs</span>
+                <span>{{$overview['usersCounts']}} utilisateurs</span>
                 </div>
             </div>
             </div>

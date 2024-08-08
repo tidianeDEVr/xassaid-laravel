@@ -104,7 +104,7 @@
     <table id="audios-categories" class="table table-bordered" style="width: 100%">
       <thead>
         <tr>
-          <th>ID</th>
+          <th>N*</th>
           <th>Titre</th>
           <th>Slug</th>
           <th>Type</th>

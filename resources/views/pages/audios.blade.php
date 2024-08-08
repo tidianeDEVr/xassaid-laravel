@@ -108,7 +108,7 @@
     <table id="audios" class="table table-bordered" style="width: 100%">
       <thead>
         <tr>
-          <th>ID</th>
+          <th>N*</th>
           <th>Titre</th>
           <th>Slug</th>
           <th>Catégorie</th>
@@ -121,7 +121,7 @@
           <td>{{$index+1}}</td>
           <td>{{$audio->title}}</td>
           <td>{{$audio->slug}}</td>
-          <td>{{$audio->category->type}} - {{$audio->category->title}}</td>
+          <td>{{$audio->category->type}} | {{$audio->category->title}}</td>
           <td>
             <div class="d-flex gap-3">
               <button class="btn btn-sm btn-outline-danger">

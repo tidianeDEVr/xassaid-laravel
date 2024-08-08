@@ -20,6 +20,7 @@ class AudioController extends Controller
     {
         $categories = AudioCategory::all();
         $audios = Audio::all();
+
         return view('pages.audios', ['categories' => $categories, 'audios' => $audios]);
     }
 
@@ -67,5 +68,16 @@ class AudioController extends Controller
         $slug = preg_replace('/-+/', '-', $slug);
         $slug = trim($slug, '-');
         return $slug;
+    }
+
+    public function frontAudiopage()
+    {
+        $categories = AudioCategory::orderBy('isFeatured', 'desc')->get();
+        $audios = Audio::all();
+        // return response()->json($categories, $audios);
+        return response([
+            'categories' => $categories,
+            'audios' => $audios
+        ]);
     }
 }

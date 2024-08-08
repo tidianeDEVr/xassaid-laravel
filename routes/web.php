@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AudioController;
+use App\Http\Controllers\FileController;
 use App\Http\Controllers\OverviewController;
 use App\Http\Controllers\SecurityController;
 use App\Http\Middleware\EnsureUserIsAdmin;
@@ -11,9 +12,8 @@ Route::get('/', [OverviewController::class, 'dashboard'])->name('dashboard')->mi
 Route::get('/audios', [AudioController::class, 'renderAudios'])->middleware(EnsureUserIsAdmin::class);
 Route::post('/audios', [AudioController::class, 'createAudio'])->middleware(EnsureUserIsAdmin::class);
 
-Route::get('/library', function () {
-    return view('pages/library');
-})->middleware(EnsureUserIsAdmin::class);
+
+Route::get('/library', [FileController::class, 'renderFiles'])->middleware(EnsureUserIsAdmin::class);
 
 Route::get('/users', function () {
     return view('pages/users');
@@ -28,5 +28,4 @@ Route::prefix('/categories')->group(function () {
 Route::delete('/logout', [SecurityController::class, 'logout'])->name('security.logout');
 
 Route::get('/login', [SecurityController::class, 'login'])->name('security.login');
-
 Route::post('/login', [SecurityController::class, 'doLogin']);
