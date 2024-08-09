@@ -19,6 +19,21 @@
       </div>
     </div>
 
+    @if (session('success'))
+    <div class="alert alert-success">
+        {{ session('success') }}
+    </div>
+    @endif
+    @if ($errors->any())
+    <div class="alert alert-danger">
+        <ul>
+            @foreach ($errors->all() as $error)
+                <li>{{ $error }}</li>
+            @endforeach
+        </ul>
+    </div>
+    @endif
+
     <!-- Modal -->
     <div
       class="modal fade"
@@ -121,8 +136,8 @@
           <td>{{$category->type}}</td>
           <td>
             @if($category->coverImagePath)
-            <a href="/storage/images/{{$category->coverImagePath}}" target="_blank">
-              <img class="img-thumbnail" width="50" src="/storage/images/{{$category->coverImagePath}}" alt="{{$category->title}}">
+            <a href="https://files.xassaid.com/images/{{$category->coverImagePath}}" target="_blank">
+              <img class="img-thumbnail" width="50" src="https://files.xassaid.com/images/{{$category->coverImagePath}}" alt="{{$category->title}}">
             </a>
             @else
             <i class="ri-close-circle-line"></i> Pas d'image !

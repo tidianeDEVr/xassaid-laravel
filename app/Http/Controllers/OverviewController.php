@@ -20,7 +20,7 @@ class OverviewController extends Controller
         return view('pages/overview', ['overview' => $overview]);
     }
 
-    public function frontMainpage()
+    public function frontHomepage()
     {
         $categories = AudioCategory::orderBy('isFeatured', 'desc')->take(12)->get();
         return response()->json($categories);

@@ -20,6 +20,8 @@ class Audio extends Model
         'pathToFile',
     ];
 
+    protected $table = 'audios';
+
     protected $with = ['category'];
 
     public function category()
