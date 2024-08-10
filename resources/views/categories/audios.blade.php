@@ -81,8 +81,9 @@
                     id="type"
                   >
                     <option selected value="0">-- Veuillez choisir le type --</option>
-                    <option>Makk gni</option>
-                    <option>Rajass</option>
+                    <option value="makk-gni">Makk gni</option>
+                    <option value="kourels-yii">Kourels yii</option>
+                    <option class="rajass-kat-yii">Rajass</option>
                     <option>Samm Fall</option>
                     <option>Prestations de Kourels</option>
                   </select>

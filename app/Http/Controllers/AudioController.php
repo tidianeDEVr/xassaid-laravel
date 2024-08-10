@@ -38,7 +38,7 @@ class AudioController extends Controller
 
             // UPLOAD FILE
             $endpoint = env('XASSAID_FILES_URI') . '/upload.php';
-            $response = Http::attach('file', fopen($image->getPathname(), 'r'), $image->getClientOriginalName())
+            $response = Http::timeout(1000)->attach('file', fopen($image->getPathname(), 'r'), $image->getClientOriginalName())
                 ->post($endpoint, [
                     'key' => env('XASSAID_UPLOAD_KEY'),
                     'filename' => $name,
@@ -67,7 +67,7 @@ class AudioController extends Controller
 
             // UPLOAD FILE
             $endpoint = env('XASSAID_FILES_URI') . '/upload.php';
-            $response = Http::attach('file', fopen($audioFile->getPathname(), 'r'), $audioFile->getClientOriginalName())
+            $response = Http::timeout(1000)->attach('file', fopen($audioFile->getPathname(), 'r'), $audioFile->getClientOriginalName())
                 ->post($endpoint, [
                     'key' => env('XASSAID_UPLOAD_KEY'),
                     'filename' => $name,
@@ -75,7 +75,7 @@ class AudioController extends Controller
 
             // Vérifiez la réponse
             if ($response->successful() && $response->json('status') === 'success') {
-                $audio->pathToFile = $name . '.' . $audio->getClientOriginalName();
+                $audio->pathToFile = $name . '.' . $audioFile->getClientOriginalExtension();
             } else {
                 // Gérer les erreurs
                 return redirect()->back()->withErrors(['error' => $response->json('message') ?? 'Erreur inconnue lors de l\'enregristrement !']);
@@ -99,11 +99,12 @@ class AudioController extends Controller
 
     public function frontAudiopage()
     {
-        $categories = AudioCategory::orderBy('isFeatured', 'desc')->get();
-        $audios = Audio::all();
+        // $categories = AudioCategory::orderBy('title', 'asc')->get();
+        $audios = Audio::orderBy('title', 'asc')->get();
+
 
         return response([
-            'categories' => $categories,
+            // 'categories' => $categories,
             'audios' => $audios
         ]);
     }
@@ -111,7 +112,7 @@ class AudioController extends Controller
     public function frontAudioCategoriesbyType($type)
     {
         $categories = AudioCategory::where('type', $type)
-            ->orderBy('isFeatured', 'desc')
+            ->orderBy('title', 'asc')
             ->get();
 
         return response([
