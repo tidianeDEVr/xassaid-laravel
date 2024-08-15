@@ -18,6 +18,7 @@ class Audio extends Model
         'slug',
         'title',
         'pathToFile',
+        'category_id'
     ];
 
     protected $table = 'audios';

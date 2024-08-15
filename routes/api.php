@@ -13,10 +13,11 @@ Route::get('/user', function (Request $request) {
 })->middleware('auth:sanctum');
 
 Route::get('/homepage', [OverviewController::class, 'frontHomepage']);
-Route::get('/audiopage', [AudioController::class, 'frontAudiopage']);
+
 
 Route::get('/file/{slug}', [FileController::class, 'getFileBySlug']);
 Route::get('/files/{page}', [FileController::class, 'paginateFiles']);
 
 Route::get('/audios/category/{category}', [AudioController::class, 'frontAudiosbyCategory']);
+Route::get('/audios/page/{page}', [AudioController::class, 'paginateAudio']);
 Route::get('/audios/{type}', [AudioController::class, 'frontAudioCategoriesbyType']);

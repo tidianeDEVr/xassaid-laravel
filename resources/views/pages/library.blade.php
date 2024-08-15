@@ -26,9 +26,9 @@
               <button class="btn btn-sm btn-outline-primary">
                 <i class="ri-edit-box-line"></i>
               </button>
-              <button class="btn btn-sm btn-outline-success">
+              <a href="https://xassaid.com/durus/{{$file->slug}}" target="_blank" class="btn btn-sm btn-outline-success">
                 <i class="ri-eye-line"></i>
-              </button>
+              </a>
             </div>
           </td>
         </tr>
