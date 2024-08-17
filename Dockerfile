@@ -1,8 +1,12 @@
-# Utiliser une image officielle de PHP avec Apache
+# Utiliser une image officielle de PHP avec Apache et PHP 8.2
 FROM php:8.2-apache
 
-# Installer les extensions PHP requises
-RUN docker-php-ext-install pdo pdo_mysql
+# Installer les extensions PHP requises et les outils zip/unzip
+RUN apt-get update && apt-get install -y \
+    git \
+    zip \
+    unzip \
+    && docker-php-ext-install pdo pdo_mysql
 
 # Installer Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
@@ -12,6 +16,9 @@ COPY . /var/www/html
 
 # Définir le répertoire de travail
 WORKDIR /var/www/html
+
+# Installer les dépendances avec Composer
+RUN composer install --no-interaction --optimize-autoloader --no-dev
 
 # Configurer Apache pour utiliser le répertoire public comme root
 ENV APACHE_DOCUMENT_ROOT /var/www/html/public
