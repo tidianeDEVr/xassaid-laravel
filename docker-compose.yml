@@ -1,0 +1,18 @@
+version: "3.8"
+
+services:
+    app:
+        build:
+            context: .
+            dockerfile: Dockerfile
+        image: xassaid_app
+        container_name: xassaid_app
+        ports:
+            - "8000:80"
+        volumes:
+            - .:/var/www/html
+        networks:
+            - laravel_network
+
+networks:
+    laravel_network:
