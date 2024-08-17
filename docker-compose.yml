@@ -1,18 +1,19 @@
 version: "3.8"
 
 services:
-    app:
+    web:
         build:
             context: .
             dockerfile: Dockerfile
-        image: xassaid_app
-        container_name: xassaid_app
+        image: laravel_app
+        container_name: laravel_web
         ports:
             - "8000:80"
         volumes:
-            - .:/var/www/html
+            - .:/var/www/html # Monte le répertoire de l'application pour le développement en direct
         networks:
-            - laravel_network
+            - app_network
 
 networks:
-    laravel_network:
+    app_network:
+        driver: bridge

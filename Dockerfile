@@ -1,38 +1,37 @@
-# Utiliser une image officielle de PHP avec Apache et PHP 8.2
-FROM php:8.2-apache
+# Use PHP with Apache as the base image
+FROM php:8.2-apache as web
 
-# Installer les extensions PHP requises et les outils zip/unzip
+# Install Additional System Dependencies
 RUN apt-get update && apt-get install -y \
-    git \
-    zip \
-    unzip \
-    && docker-php-ext-install pdo pdo_mysql
+    libzip-dev \
+    zip
 
-# Installer Composer
-COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
+# Clear cache
+RUN apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Copier les fichiers de l'application
-COPY . /var/www/html
+# Enable Apache mod_rewrite for URL rewriting
+RUN a2enmod rewrite
 
-# Définir le répertoire de travail
-WORKDIR /var/www/html
+# Install PHP extensions
+RUN docker-php-ext-install pdo_mysql zip
 
-# Installer les dépendances avec Composer
-RUN composer install --no-interaction --optimize-autoloader --no-dev
-
-# Configurer Apache pour utiliser le répertoire public comme root
-ENV APACHE_DOCUMENT_ROOT /var/www/html/public
+# Configure Apache DocumentRoot to point to Laravel's public directory
+# and update Apache configuration files
+ENV APACHE_DOCUMENT_ROOT=/var/www/html/public
 RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-available/*.conf
 RUN sed -ri -e 's!/var/www/!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/apache2.conf /etc/apache2/conf-available/*.conf
 
-# Donner les permissions adéquates au répertoire de stockage
+# Copy the application code
+COPY . /var/www/html
+
+# Set the working directory
+WORKDIR /var/www/html
+
+# Install composer
+RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
+
+# Install project dependencies
+RUN composer install
+
+# Set permissions
 RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
-
-# Activer le module Apache pour le rewriting
-RUN a2enmod rewrite
-
-# Exposer le port 80
-EXPOSE 80
-
-# Lancer Apache en mode foreground
-CMD ["apache2-foreground"]
