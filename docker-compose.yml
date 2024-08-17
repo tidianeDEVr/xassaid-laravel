@@ -11,9 +11,8 @@ services:
             - "8000:80"
         volumes:
             - .:/var/www/html # Monte le répertoire de l'application pour le développement en direct
-        networks:
-            - app_network
-
-networks:
-    app_network:
-        driver: bridge
+        # networks:
+        #     - app_network
+# networks:
+#     app_network:
+#         driver: bridge
