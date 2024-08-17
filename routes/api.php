@@ -16,7 +16,7 @@ Route::get('/homepage', [OverviewController::class, 'frontHomepage']);
 
 
 Route::get('/file/{slug}', [FileController::class, 'getFileBySlug']);
-Route::get('/files/{page}', [FileController::class, 'paginateFiles']);
+Route::get('/files/page/{page}', [FileController::class, 'paginateFiles']);
 
 Route::get('/audios/category/{category}', [AudioController::class, 'frontAudiosbyCategory']);
 Route::get('/audios/page/{page}', [AudioController::class, 'paginateAudio']);
