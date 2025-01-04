@@ -5,6 +5,7 @@
         <title>Xassaid | Tableau de bord</title>
         <link rel="icon" type="image/x-icon" href="{{asset('favicon.png')}}" />
         <meta name="robots" content="noindex" />
+        <meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests">
         <link
         href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css"
         rel="stylesheet"

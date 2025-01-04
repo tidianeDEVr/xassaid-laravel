@@ -6,13 +6,12 @@ use App\Http\Controllers\OverviewController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
-$activeVersion = 'v1';
-
 Route::get('/user', function (Request $request) {
     return $request->user();
 })->middleware('auth:sanctum');
 
 Route::get('/homepage', [OverviewController::class, 'frontHomepage']);
+Route::get('/search/{term}', [OverviewController::class, 'searchAudiosAndFile']);
 
 
 Route::get('/file/{slug}', [FileController::class, 'getFileBySlug']);
