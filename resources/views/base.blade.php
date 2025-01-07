@@ -49,6 +49,9 @@
                 <a class="nav-link" href="/audios">Audios</a>
             </li>
             <li class="nav-item">
+                <a class="nav-link" href="/articles">Articles</a>
+            </li>
+            <li class="nav-item">
                 <a class="nav-link" href="/library">Bibliothèque</a>
             </li>
             <li class="nav-item">

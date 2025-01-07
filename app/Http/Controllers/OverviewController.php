@@ -39,14 +39,18 @@ class OverviewController extends Controller
     {
         $audios = Audio::where('title', 'LIKE', "%{$term}%")->get();
         $files = File::where('title', 'LIKE', "%{$term}%")->get();
+        $articles = [];
         $categories = AudioCategory::where('title', 'LIKE', "%{$term}%")->get();
+
+        
         foreach ($categories as $category) {
             $audios = $audios->merge($category->audios);
         }
 
         return response([
-            "audios" => $audios,
-            "files" => $files
+            "audios" => $audios->values(),
+            "files" => $files->values(),
+            "articles" => $articles
         ]);
     }
 }

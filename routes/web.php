@@ -3,6 +3,7 @@
 use App\Http\Controllers\AudioController;
 use App\Http\Controllers\FileController;
 use App\Http\Controllers\OverviewController;
+use App\Http\Controllers\ArticleController;
 use App\Http\Controllers\SecurityController;
 use App\Http\Controllers\UserController;
 use App\Http\Middleware\EnsureUserIsAdmin;
@@ -13,7 +14,7 @@ Route::get('/', [OverviewController::class, 'dashboard'])->name('dashboard')->mi
 Route::get('/audios', [AudioController::class, 'renderAudios'])->middleware(EnsureUserIsAdmin::class);
 Route::post('/audios', [AudioController::class, 'createAudio'])->middleware(EnsureUserIsAdmin::class);
 
-
+Route::get('/articles', [ArticleController::class, 'renderArticles'])->middleware(EnsureUserIsAdmin::class);
 Route::get('/library', [FileController::class, 'renderFiles'])->middleware(EnsureUserIsAdmin::class);
 
 Route::get('/users', [UserController::class, 'renderUsers'])->middleware(EnsureUserIsAdmin::class);
