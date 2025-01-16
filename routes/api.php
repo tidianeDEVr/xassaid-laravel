@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AudioController;
+use App\Http\Controllers\ArticleController;
 use App\Http\Controllers\FileController;
 use App\Http\Controllers\OverviewController;
 use Illuminate\Http\Request;
@@ -13,9 +14,13 @@ Route::get('/user', function (Request $request) {
 Route::get('/homepage', [OverviewController::class, 'frontHomepage']);
 Route::get('/search/{term}', [OverviewController::class, 'searchAudiosAndFile']);
 
+Route::get('/article/{slug}', [ArticleController::class, 'getArticleBySlug']);
+Route::get('/articles/page/{page}', [ArticleController::class, 'paginateArticle']);
+Route::get('/articles/sitemap', [ArticleController::class, 'sitemap']);
 
 Route::get('/file/{slug}', [FileController::class, 'getFileBySlug']);
 Route::get('/files/page/{page}', [FileController::class, 'paginateFiles']);
+Route::get('/files/sitemap', [FileController::class, 'sitemap']);
 
 Route::get('/audios/category/{category}', [AudioController::class, 'frontAudiosbyCategory']);
 Route::get('/audios/page/{page}', [AudioController::class, 'paginateAudio']);

@@ -5,7 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Audio;
 use App\Models\AudioCategory;
 use App\Models\File;
-use App\Models\User;
+use App\Models\Article;
 
 class OverviewController extends Controller
 {
@@ -13,7 +13,7 @@ class OverviewController extends Controller
     {
         $overview = [
             'audiosCounts' => Audio::all()->count(),
-            'usersCounts' => User::all()->count(),
+            'articlesCounts' => Article::all()->count(),
             'filesCounts' => File::all()->count(),
             'categoriesCounts' => AudioCategory::all()->count()
         ];
@@ -37,20 +37,18 @@ class OverviewController extends Controller
 
     public function searchAudiosAndFile(String $term)
     {
-        $audios = Audio::where('title', 'LIKE', "%{$term}%")->get();
+        $audios = Audio::where('title', 'LIKE', "%{$term}%")
+        ->orWhereHas('category', function($query) use ($term) {
+            $query->where('title', 'LIKE', "%{$term}%");
+        })->get();
         $files = File::where('title', 'LIKE', "%{$term}%")->get();
-        $articles = [];
+        $articles = Article::where('title', 'LIKE', "%{$term}%")->get();
         $categories = AudioCategory::where('title', 'LIKE', "%{$term}%")->get();
-
-        
-        foreach ($categories as $category) {
-            $audios = $audios->merge($category->audios);
-        }
 
         return response([
             "audios" => $audios->values(),
             "files" => $files->values(),
-            "articles" => $articles
+            "articles" => $articles->values(),
         ]);
     }
 }

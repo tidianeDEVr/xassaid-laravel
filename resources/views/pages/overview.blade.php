@@ -69,12 +69,12 @@
                 class="bg-dark text-white d-flex align-items-center justify-content-center fs-2"
                 style="width: 50px; height: 50px; border-radius: 3px"
                 >
-                <i class="ri-group-line"></i>
+                <i class="ri-news-line"></i>
                 </div>
                 <div
                 class="px-3 fs-5 d-flex align-items-center justify-content-center"
                 >
-                <span>{{$overview['usersCounts']}} utilisateurs</span>
+                <span>{{$overview['articlesCounts']}} articles</span>
                 </div>
             </div>
             </div>

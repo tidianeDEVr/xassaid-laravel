@@ -15,6 +15,8 @@ Route::get('/audios', [AudioController::class, 'renderAudios'])->middleware(Ensu
 Route::post('/audios', [AudioController::class, 'createAudio'])->middleware(EnsureUserIsAdmin::class);
 
 Route::get('/articles', [ArticleController::class, 'renderArticles'])->middleware(EnsureUserIsAdmin::class);
+Route::get('/articles/create', [ArticleController::class, 'renderCreateArticles'])->middleware(EnsureUserIsAdmin::class);
+Route::post('/articles/create', [ArticleController::class, 'processCreateArticles'])->middleware(EnsureUserIsAdmin::class);
 Route::get('/library', [FileController::class, 'renderFiles'])->middleware(EnsureUserIsAdmin::class);
 
 Route::get('/users', [UserController::class, 'renderUsers'])->middleware(EnsureUserIsAdmin::class);

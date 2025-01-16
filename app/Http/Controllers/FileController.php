@@ -19,7 +19,9 @@ class FileController extends Controller
 
         $files = File::skip(($page - 1) * $perPage)->take($perPage)->get();
 
-        return response()->json($files);
+        return response([
+            'files' => $files
+        ]);
     }
 
     public function getFileBySlug($slug)
@@ -53,4 +55,9 @@ class FileController extends Controller
         $title = ucwords($title);
         return $title;
     }
+
+    public function sitemap() {
+        $slugs = File::all()->pluck('slug');
+        return response()->json($slugs);
+    }    
 }

@@ -21,8 +21,6 @@ class AudioCategory extends Model
         'coverImagePath',
     ];
 
-    // protected $with = ['audios'];
-
     public function audios()
     {
         return $this->hasMany(Audio::class, 'category_id');
