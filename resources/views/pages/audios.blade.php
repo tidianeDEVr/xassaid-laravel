@@ -32,7 +32,8 @@
         <div class="modal fade" id="audioModal" tabindex="-1" aria-labelledby="audioModalLabel" aria-hidden="true">
             <div class="modal-dialog modal-lg">
                 <div class="modal-content">
-                    <form @csrf enctype="multipart/form-data" method="post" action="{{ url('/audios') }}">
+                    <form enctype="multipart/form-data" method="post" action="{{ url('/audios') }}">
+                        @csrf
                         <div class="modal-header">
                             <h1 class="modal-title fs-5" id="audioModalLabel">
                                 Ajouter d'un nouveau fichier
