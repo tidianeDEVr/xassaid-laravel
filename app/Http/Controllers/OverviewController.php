@@ -25,13 +25,13 @@ class OverviewController extends Controller
         $makkGni = AudioCategory::where('type', 'makk-gni')->orderBy('isFeatured', 'desc')->take(12)->get();
         $kourelsYii = AudioCategory::where('type', 'kourels-yii')->orderBy('isFeatured', 'desc')->take(12)->get();
         $rajassKatYii = AudioCategory::where('type', 'rajass-kat-yii')->orderBy('isFeatured', 'desc')->take(12)->get();
-        $sammFallYii = AudioCategory::where('type', 'samm-fall')->orderBy('isFeatured', 'desc')->take(12)->get();
+        $autres = AudioCategory::where('type', 'autres')->orderBy('isFeatured', 'desc')->take(12)->get();
 
         return response([
             "makkGni" => $makkGni,
             "kourelsYii" => $kourelsYii,
             "rajassKatYii" => $rajassKatYii,
-            "sammFallYii" => $sammFallYii
+            "autres" => $autres
         ]);
     }
 

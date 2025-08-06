@@ -114,9 +114,9 @@ class AudioController extends Controller
     public function paginateAudio($page)
     {
         $perPage = 64;
-
-        $audios = Audio::skip(($page - 1) * $perPage)->take($perPage)
-            ->orderBy('title', 'asc')->get();
+        $audios = Audio::skip(($page - 1) * $perPage)
+        ->take($perPage)
+        ->orderBy('title', 'asc')->get();
 
         return response([
             'audios' => $audios

@@ -31,6 +31,8 @@ COPY . /var/www/html
 
 # Set the working directory
 WORKDIR /var/www/html
+RUN chown -R www-data:www-data storage bootstrap/cache \
+ && chmod -R 775 storage bootstrap/cache
 
 # Install composer
 RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
