@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AnalyticsController;
 use App\Http\Controllers\AudioController;
 use App\Http\Controllers\FileController;
 use App\Http\Controllers\OverviewController;
@@ -10,6 +11,8 @@ use App\Http\Middleware\EnsureUserIsAdmin;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', [OverviewController::class, 'dashboard'])->name('dashboard')->middleware(EnsureUserIsAdmin::class);
+Route::get('/analytics', [AnalyticsController::class, 'render'])->middleware(EnsureUserIsAdmin::class);
+Route::get('/analytics/check', [AnalyticsController::class, 'check'])->middleware(EnsureUserIsAdmin::class);
 
 Route::get('/audios', [AudioController::class, 'renderAudios'])->middleware(EnsureUserIsAdmin::class);
 Route::post('/audios', [AudioController::class, 'createAudio'])->middleware(EnsureUserIsAdmin::class);

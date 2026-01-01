@@ -64,6 +64,9 @@
             <li class="nav-item">
                 <a class="nav-link" href="/users">Utilisateurs</a>
             </li>
+            <li class="nav-item">
+                <a class="nav-link" href="/analytics">Analytics</a>
+            </li>
             @auth
             <li class="nav-item">
                 <form
