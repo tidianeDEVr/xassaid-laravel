@@ -94,12 +94,24 @@ class AnalyticsController extends Controller
 
     private function getAudioBaseUrl(): string
     {
-        return rtrim((string) env('XASSAID_AUDIO_PUBLIC_URL', env('XASSAID_FILES_PUBLIC_URL', env('XASSAID_FILES_URI', ''))), '/');
+        $base = (string) env('XASSAID_AUDIO_PUBLIC_URL', '');
+        if ($base === '') {
+            $base = (string) env('XASSAID_FILES_PUBLIC_URL', env('XASSAID_FILES_URI', ''));
+            $base = $this->ensureSuffix($base, '/audios');
+        }
+
+        return rtrim($base, '/');
     }
 
     private function getFileBaseUrl(): string
     {
-        return rtrim((string) env('XASSAID_FILE_PUBLIC_URL', env('XASSAID_FILES_PUBLIC_URL', env('XASSAID_FILES_URI', ''))), '/');
+        $base = (string) env('XASSAID_FILE_PUBLIC_URL', '');
+        if ($base === '') {
+            $base = (string) env('XASSAID_FILES_PUBLIC_URL', env('XASSAID_FILES_URI', ''));
+            $base = $this->ensureSuffix($base, '/files');
+        }
+
+        return rtrim($base, '/');
     }
 
     /**
@@ -144,5 +156,20 @@ class AnalyticsController extends Controller
     private function isOkStatus(int $status): bool
     {
         return $status >= 200 && $status < 400;
+    }
+
+    private function ensureSuffix(string $base, string $suffix): string
+    {
+        $base = rtrim($base, '/');
+        if ($base === '') {
+            return '';
+        }
+
+        $suffix = '/' . ltrim($suffix, '/');
+        if (str_ends_with($base, $suffix)) {
+            return $base;
+        }
+
+        return $base . $suffix;
     }
 }
