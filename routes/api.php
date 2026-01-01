@@ -15,13 +15,13 @@ Route::get('/homepage', [OverviewController::class, 'frontHomepage']);
 Route::get('/search/{term}', [OverviewController::class, 'searchAudiosAndFile']);
 
 Route::get('/article/{slug}', [ArticleController::class, 'getArticleBySlug']);
-Route::get('/articles/page/{page}', [ArticleController::class, 'paginateArticle']);
+Route::get('/articles/page/{page}', [ArticleController::class, 'paginateArticle'])->whereNumber('page');
 Route::get('/articles/sitemap', [ArticleController::class, 'sitemap']);
 
 Route::get('/file/{slug}', [FileController::class, 'getFileBySlug']);
-Route::get('/files/page/{page}', [FileController::class, 'paginateFiles']);
+Route::get('/files/page/{page}', [FileController::class, 'paginateFiles'])->whereNumber('page');
 Route::get('/files/sitemap', [FileController::class, 'sitemap']);
 
 Route::get('/audios/category/{category}', [AudioController::class, 'frontAudiosbyCategory']);
-Route::get('/audios/page/{page}', [AudioController::class, 'paginateAudio']);
+Route::get('/audios/page/{page}', [AudioController::class, 'paginateAudio'])->whereNumber('page');
 Route::get('/audios/{type}', [AudioController::class, 'frontAudioCategoriesbyType']);

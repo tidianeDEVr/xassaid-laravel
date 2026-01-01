@@ -3,8 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\UserRequest;
+use App\Http\Requests\UserUpdateRequest;
 use App\Models\Role;
 use App\Models\User;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 
 class UserController extends Controller
@@ -27,12 +29,42 @@ class UserController extends Controller
 
             $adminRole = Role::where('libelle', 'ROLE_ADMIN')->first();
 
-            $newUser->roles->add($adminRole);
+            if ($adminRole) {
+                $newUser->roles()->syncWithoutDetaching([$adminRole->id]);
+            }
 
-            return redirect()->back()->with('success', 'L\'utilisateur a été créer !');
+            return redirect()->back()->with('success', 'L\'utilisateur a été créé !');
         } catch (\Throwable $th) {
             return redirect()->back()->withErrors(['error' => 'Erreur inconnue lors de la création !']);
         }
+    }
+
+    public function updateUser(UserUpdateRequest $request, User $user)
+    {
+        $data = $request->validated();
+
+        $user->name = $data['name'];
+        $user->email = $data['email'];
+
+        if (!empty($data['password'])) {
+            $user->password = Hash::make($data['password']);
+        }
+
+        $user->save();
+
+        return redirect()->back()->with('success', 'L\'utilisateur a été modifié !');
+    }
+
+    public function deleteUser(User $user)
+    {
+        if (Auth::id() === $user->id) {
+            return redirect()->back()->withErrors(['error' => 'Vous ne pouvez pas supprimer votre propre compte.']);
+        }
+
+        $user->roles()->detach();
+        $user->delete();
+
+        return redirect()->back()->with('success', 'L\'utilisateur a été supprimé !');
     }
 
     private function formatName($data)

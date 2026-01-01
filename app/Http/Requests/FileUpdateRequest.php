@@ -4,8 +4,15 @@ namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
 
-class AudioRequest extends FormRequest
+class FileUpdateRequest extends FormRequest
 {
+    protected function prepareForValidation(): void
+    {
+        if ($this->has('slug') && $this->input('slug') === '') {
+            $this->merge(['slug' => null]);
+        }
+    }
+
     /**
      * Determine if the user is authorized to make this request.
      */
@@ -22,9 +29,8 @@ class AudioRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'title' => 'required|min:4',
-            'category' => 'required|exists:audio_categories,slug',
-            'audio' => 'required|mimes:mp3,wav,ogg,m4a|max:102400',
+            'title' => 'required|string|min:2',
+            'slug' => 'nullable|string|min:2',
         ];
     }
 }

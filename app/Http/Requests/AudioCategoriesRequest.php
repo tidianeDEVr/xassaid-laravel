@@ -24,7 +24,7 @@ class AudioCategoriesRequest extends FormRequest
         return [
             'title' => 'required|min:4',
             'type' => 'required|min:4',
-            'coverImage' => 'image|mimes:jpeg,webp,png,jpg|max:2048',
+            'coverImage' => 'nullable|image|mimes:jpeg,webp,png,jpg|max:2048',
         ];
     }
 }

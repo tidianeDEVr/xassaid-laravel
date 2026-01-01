@@ -2,6 +2,7 @@
 <html lang="fr">
     <head>
         <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
         <title>Xassaid | Tableau de bord</title>
         <link rel="icon" type="image/x-icon" href="{{asset('favicon.png')}}" />
         <meta name="robots" content="noindex" />

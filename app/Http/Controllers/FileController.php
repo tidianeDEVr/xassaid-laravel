@@ -2,7 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\FileCreateRequest;
+use App\Http\Requests\FileUpdateRequest;
 use App\Models\File;
+use App\Support\MediaOptimizer;
+use Illuminate\Support\Facades\Http;
 
 class FileController extends Controller
 {
@@ -13,9 +17,49 @@ class FileController extends Controller
         return view('pages.library', ['files' => $files]);
     }
 
+    public function createFile(FileCreateRequest $request)
+    {
+        $data = $request->validated();
+        $file = new File();
+        $file->title = $data['title'];
+        $file->slug = $this->generateSlug($file->title);
+
+        $uploaded = $request->file('file');
+        if (!$uploaded || !$uploaded->isValid()) {
+            return redirect()->back()->withErrors(['error' => 'Le fichier est invalide.']);
+        }
+
+        $baseName = MediaOptimizer::normalizeFilename(pathinfo($uploaded->getClientOriginalName(), PATHINFO_FILENAME));
+        $name = $baseName !== '' ? $baseName . '-' . time() : (string) time();
+        $extension = strtolower($uploaded->getClientOriginalExtension());
+        $uploadFilename = $name . '.' . $extension;
+
+        $endpoint = env('XASSAID_FILES_URI') . '/upload.php';
+        $response = Http::timeout(1000)->attach('file', fopen($uploaded->getPathname(), 'r'), $uploadFilename)
+            ->post($endpoint, [
+                'key' => env('XASSAID_UPLOAD_KEY'),
+                'filename' => $name,
+            ]);
+
+        if ($response->successful() && $response->json('status') === 'success') {
+            $file->pathToFile = $uploadFilename;
+        } else {
+            return redirect()->back()->withErrors(['error' => $response->json('message') ?? 'Erreur inconnue lors de l\'enregristrement !']);
+        }
+
+        $file->save();
+
+        return redirect()->back()->with('success', 'Le fichier a été enregistré !');
+    }
+
     public function paginateFiles($page)
     {
+        if (!is_numeric($page) || (int) $page < 1) {
+            return response()->json(['message' => 'Page invalide.'], 400);
+        }
+
         $perPage = 64;
+        $page = (int) $page;
 
         $files = File::skip(($page - 1) * $perPage)->take($perPage)->get();
 
@@ -33,6 +77,23 @@ class FileController extends Controller
         }
 
         return response()->json($file);
+    }
+
+    public function updateFile(FileUpdateRequest $request, File $file)
+    {
+        $data = $request->validated();
+        $file->title = $data['title'];
+        $file->slug = $data['slug'] ?: $this->generateSlug($file->title);
+        $file->save();
+
+        return redirect()->back()->with('success', 'Le fichier a été modifié !');
+    }
+
+    public function deleteFile(File $file)
+    {
+        $file->delete();
+
+        return redirect()->back()->with('success', 'Le fichier a été supprimé !');
     }
 
     function generateSlug($string)
