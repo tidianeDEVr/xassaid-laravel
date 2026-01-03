@@ -1,6 +1,9 @@
 @extends('base')
 
 @section('content')
+@php
+    $canManageAdmins = isset($canManageAdmins) ? $canManageAdmins : (auth()->check() && auth()->user()->email === 'cheikhtiindiaye@gmail.com');
+@endphp
     <div class="container py-4">
         <div class="d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between mb-3 gap-2">
             <h1>Fichiers Audios</h1>
@@ -108,14 +111,16 @@
                                         data-category="{{ optional($audio->category)->slug }}">
                                         <i class="ri-edit-box-line"></i>
                                     </button>
-                                    <form method="post" action="{{ url('/audios/' . $audio->id) }}"
-                                        onsubmit="return confirm('Confirmer la suppression ?')">
-                                        @csrf
-                                        @method('delete')
-                                        <button class="btn btn-sm btn-outline-danger" type="submit">
-                                            <i class="ri-delete-bin-6-line"></i>
-                                        </button>
-                                    </form>
+                                    @if ($canManageAdmins)
+                                        <form method="post" action="{{ url('/audios/' . $audio->id) }}"
+                                            onsubmit="return confirm('Confirmer la suppression ?')">
+                                            @csrf
+                                            @method('delete')
+                                            <button class="btn btn-sm btn-outline-danger" type="submit">
+                                                <i class="ri-delete-bin-6-line"></i>
+                                            </button>
+                                        </form>
+                                    @endif
                                 </div>
                             </td>
                         </tr>

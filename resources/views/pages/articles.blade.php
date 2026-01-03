@@ -1,6 +1,9 @@
 @extends('base')
 
 @section('content')
+@php
+    $canManageAdmins = isset($canManageAdmins) ? $canManageAdmins : (auth()->check() && auth()->user()->email === 'cheikhtiindiaye@gmail.com');
+@endphp
 <div class="container py-4">
     <div class="d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between mb-3 gap-2">
       <h1>Articles</h1>
@@ -53,14 +56,16 @@
                 <a class="btn btn-sm btn-outline-primary" href="{{ url('/articles/' . $article->id . '/edit') }}">
                   <i class="ri-edit-box-line"></i>
                 </a>
-                <form method="post" action="{{ url('/articles/' . $article->id) }}"
-                  onsubmit="return confirm('Confirmer la suppression ?')">
-                  @csrf
-                  @method('delete')
-                  <button class="btn btn-sm btn-outline-danger" type="submit">
-                    <i class="ri-delete-bin-6-line"></i>
-                  </button>
-                </form>
+                @if ($canManageAdmins)
+                  <form method="post" action="{{ url('/articles/' . $article->id) }}"
+                    onsubmit="return confirm('Confirmer la suppression ?')">
+                    @csrf
+                    @method('delete')
+                    <button class="btn btn-sm btn-outline-danger" type="submit">
+                      <i class="ri-delete-bin-6-line"></i>
+                    </button>
+                  </form>
+                @endif
               </div>
             </td>
           </tr>

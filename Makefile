@@ -16,6 +16,8 @@ rsync:
 		--exclude "storage/framework/cache/*" \
 		--exclude "storage/framework/sessions/*" \
 		--exclude "storage/framework/views/*" \
+		--exclude "storage/indexes" \
+		--exclude "bootstrap/cache" \
 		--exclude ".env" \
 		./ $(REMOTE_USER)@$(REMOTE_HOST):$(REMOTE_PATH)
 

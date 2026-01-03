@@ -20,18 +20,18 @@ Route::get('/analytics/short-audios', [AnalyticsController::class, 'shortAudios'
 Route::get('/audios', [AudioController::class, 'renderAudios'])->middleware(EnsureUserIsAdmin::class);
 Route::post('/audios', [AudioController::class, 'createAudio'])->middleware(EnsureUserIsAdmin::class);
 Route::put('/audios/{audio}', [AudioController::class, 'updateAudio'])->middleware(EnsureUserIsAdmin::class);
-Route::delete('/audios/{audio}', [AudioController::class, 'deleteAudio'])->middleware(EnsureUserIsAdmin::class);
+Route::delete('/audios/{audio}', [AudioController::class, 'deleteAudio'])->middleware([EnsureUserIsAdmin::class, EnsureUserIsSuperAdmin::class]);
 
 Route::get('/articles', [ArticleController::class, 'renderArticles'])->middleware(EnsureUserIsAdmin::class);
 Route::get('/articles/create', [ArticleController::class, 'renderCreateArticles'])->middleware(EnsureUserIsAdmin::class);
 Route::post('/articles/create', [ArticleController::class, 'processCreateArticles'])->middleware(EnsureUserIsAdmin::class);
 Route::get('/articles/{article}/edit', [ArticleController::class, 'renderEditArticle'])->middleware(EnsureUserIsAdmin::class);
 Route::put('/articles/{article}', [ArticleController::class, 'updateArticle'])->middleware(EnsureUserIsAdmin::class);
-Route::delete('/articles/{article}', [ArticleController::class, 'deleteArticle'])->middleware(EnsureUserIsAdmin::class);
+Route::delete('/articles/{article}', [ArticleController::class, 'deleteArticle'])->middleware([EnsureUserIsAdmin::class, EnsureUserIsSuperAdmin::class]);
 Route::get('/library', [FileController::class, 'renderFiles'])->middleware(EnsureUserIsAdmin::class);
 Route::post('/library', [FileController::class, 'createFile'])->middleware(EnsureUserIsAdmin::class);
 Route::put('/library/{file}', [FileController::class, 'updateFile'])->middleware(EnsureUserIsAdmin::class);
-Route::delete('/library/{file}', [FileController::class, 'deleteFile'])->middleware(EnsureUserIsAdmin::class);
+Route::delete('/library/{file}', [FileController::class, 'deleteFile'])->middleware([EnsureUserIsAdmin::class, EnsureUserIsSuperAdmin::class]);
 
 Route::get('/users', [UserController::class, 'renderUsers'])->middleware([EnsureUserIsAdmin::class, EnsureUserIsSuperAdmin::class]);
 Route::post('/users', [UserController::class, 'createAdmin'])->middleware([EnsureUserIsAdmin::class, EnsureUserIsSuperAdmin::class]);
@@ -42,7 +42,7 @@ Route::prefix('/categories')->group(function () {
     Route::post('/audios',  [AudioController::class, 'createCategory'])->middleware(EnsureUserIsAdmin::class);
     Route::get('/audios', [AudioController::class, 'renderCategories'])->middleware(EnsureUserIsAdmin::class)->name('audios.renderCategories');
     Route::put('/audios/{category}', [AudioController::class, 'updateCategory'])->middleware(EnsureUserIsAdmin::class);
-    Route::delete('/audios/{category}', [AudioController::class, 'deleteCategory'])->middleware(EnsureUserIsAdmin::class);
+    Route::delete('/audios/{category}', [AudioController::class, 'deleteCategory'])->middleware([EnsureUserIsAdmin::class, EnsureUserIsSuperAdmin::class]);
 });
 
 // Securities

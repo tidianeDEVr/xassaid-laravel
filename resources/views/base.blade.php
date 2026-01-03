@@ -26,6 +26,9 @@
 </head>
 
 <body class="bg-light">
+    @php
+        $canManageAdmins = auth()->check() && auth()->user()->email === 'cheikhtiindiaye@gmail.com';
+    @endphp
     <nav class="navbar navbar-expand-lg navbar-light bg-light border-bottom">
         <div class="container">
             <a class="navbar-brand" href="/">
@@ -35,9 +38,6 @@
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="mainNavbar">
-                @php
-                    $canManageAdmins = auth()->check() && auth()->user()->email === 'cheikhtiindiaye@gmail.com';
-                @endphp
                 <ul class="navbar-nav ms-auto mb-2 mb-lg-0">
                     <li class="nav-item">
                         <a class="nav-link" href="/">Tableau de bord</a>
