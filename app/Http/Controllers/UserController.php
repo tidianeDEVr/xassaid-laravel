@@ -19,6 +19,10 @@ class UserController extends Controller
 
     public function createAdmin(UserRequest $request)
     {
+        if (!$this->canManageAdmins()) {
+            return redirect()->back()->withErrors(['error' => 'Action non autorisée.']);
+        }
+
         $data = $request->validated();
         try {
             $newUser = User::create([
@@ -57,6 +61,10 @@ class UserController extends Controller
 
     public function deleteUser(User $user)
     {
+        if (!$this->canManageAdmins()) {
+            return redirect()->back()->withErrors(['error' => 'Action non autorisée.']);
+        }
+
         if (Auth::id() === $user->id) {
             return redirect()->back()->withErrors(['error' => 'Vous ne pouvez pas supprimer votre propre compte.']);
         }
@@ -72,5 +80,12 @@ class UserController extends Controller
         $firstname = $data['firstname'];
         $lastname = $data['lastname'];
         return ucwords(strtolower($firstname)) . ' ' . strtoupper($lastname);
+    }
+
+    private function canManageAdmins(): bool
+    {
+        $user = Auth::user();
+
+        return $user && $user->email === 'cheikhtiindiaye@gmail.com';
     }
 }

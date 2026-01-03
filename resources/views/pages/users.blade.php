@@ -2,18 +2,24 @@
 
 @section('content')
 <div class="container py-4">
+  @php
+    $canManageAdmins = auth()->check() && auth()->user()->email === 'cheikhtiindiaye@gmail.com';
+  @endphp
   <div class="d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between mb-3 gap-2">
     <h1>Utilisateurs</h1>
-    <button
-      type="button"
-      class="btn btn-dark"
-      data-bs-toggle="modal"
-      data-bs-target="#userModal"
-    >
-      Ajouter un nouveau admin
-    </button>
+    @if ($canManageAdmins)
+      <button
+        type="button"
+        class="btn btn-dark"
+        data-bs-toggle="modal"
+        data-bs-target="#userModal"
+      >
+        Ajouter un nouveau admin
+      </button>
+    @endif
   </div>
 
+  @if ($canManageAdmins)
   <div
       class="modal fade"
       id="userModal"
@@ -110,6 +116,7 @@
         </div>
       </div>
     </div>
+  @endif
 
   @if (session('success'))
   <div class="alert alert-success">
@@ -153,14 +160,16 @@
                 data-name="{{ $user->name }}" data-email="{{ $user->email }}">
                 <i class="ri-edit-box-line"></i>
               </button>
-              <form method="post" action="{{ url('/users/' . $user->id) }}"
-                onsubmit="return confirm('Confirmer la suppression ?')">
-                @csrf
-                @method('delete')
-                <button class="btn btn-sm btn-outline-danger" type="submit" @if(auth()->id() === $user->id) disabled @endif>
-                  <i class="ri-delete-bin-6-line"></i>
-                </button>
-              </form>
+              @if ($canManageAdmins)
+                <form method="post" action="{{ url('/users/' . $user->id) }}"
+                  onsubmit="return confirm('Confirmer la suppression ?')">
+                  @csrf
+                  @method('delete')
+                  <button class="btn btn-sm btn-outline-danger" type="submit" @if(auth()->id() === $user->id) disabled @endif>
+                    <i class="ri-delete-bin-6-line"></i>
+                  </button>
+                </form>
+              @endif
             </div>
           </td>
         </tr>

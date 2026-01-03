@@ -8,11 +8,14 @@ use App\Http\Controllers\ArticleController;
 use App\Http\Controllers\SecurityController;
 use App\Http\Controllers\UserController;
 use App\Http\Middleware\EnsureUserIsAdmin;
+use App\Http\Middleware\EnsureUserIsSuperAdmin;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', [OverviewController::class, 'dashboard'])->name('dashboard')->middleware(EnsureUserIsAdmin::class);
-Route::get('/analytics', [AnalyticsController::class, 'render'])->middleware(EnsureUserIsAdmin::class);
-Route::get('/analytics/check', [AnalyticsController::class, 'check'])->middleware(EnsureUserIsAdmin::class);
+Route::get('/analytics', [AnalyticsController::class, 'render'])->middleware([EnsureUserIsAdmin::class, EnsureUserIsSuperAdmin::class]);
+Route::get('/analytics/check', [AnalyticsController::class, 'check'])->middleware([EnsureUserIsAdmin::class, EnsureUserIsSuperAdmin::class]);
+Route::get('/analytics/duplicates', [AnalyticsController::class, 'duplicates'])->middleware([EnsureUserIsAdmin::class, EnsureUserIsSuperAdmin::class]);
+Route::get('/analytics/short-audios', [AnalyticsController::class, 'shortAudios'])->middleware([EnsureUserIsAdmin::class, EnsureUserIsSuperAdmin::class]);
 
 Route::get('/audios', [AudioController::class, 'renderAudios'])->middleware(EnsureUserIsAdmin::class);
 Route::post('/audios', [AudioController::class, 'createAudio'])->middleware(EnsureUserIsAdmin::class);
@@ -30,10 +33,10 @@ Route::post('/library', [FileController::class, 'createFile'])->middleware(Ensur
 Route::put('/library/{file}', [FileController::class, 'updateFile'])->middleware(EnsureUserIsAdmin::class);
 Route::delete('/library/{file}', [FileController::class, 'deleteFile'])->middleware(EnsureUserIsAdmin::class);
 
-Route::get('/users', [UserController::class, 'renderUsers'])->middleware(EnsureUserIsAdmin::class);
-Route::post('/users', [UserController::class, 'createAdmin'])->middleware(EnsureUserIsAdmin::class);
-Route::put('/users/{user}', [UserController::class, 'updateUser'])->middleware(EnsureUserIsAdmin::class);
-Route::delete('/users/{user}', [UserController::class, 'deleteUser'])->middleware(EnsureUserIsAdmin::class);
+Route::get('/users', [UserController::class, 'renderUsers'])->middleware([EnsureUserIsAdmin::class, EnsureUserIsSuperAdmin::class]);
+Route::post('/users', [UserController::class, 'createAdmin'])->middleware([EnsureUserIsAdmin::class, EnsureUserIsSuperAdmin::class]);
+Route::put('/users/{user}', [UserController::class, 'updateUser'])->middleware([EnsureUserIsAdmin::class, EnsureUserIsSuperAdmin::class]);
+Route::delete('/users/{user}', [UserController::class, 'deleteUser'])->middleware([EnsureUserIsAdmin::class, EnsureUserIsSuperAdmin::class]);
 
 Route::prefix('/categories')->group(function () {
     Route::post('/audios',  [AudioController::class, 'createCategory'])->middleware(EnsureUserIsAdmin::class);
