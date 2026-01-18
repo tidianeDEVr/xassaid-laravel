@@ -90,11 +90,22 @@
             <input class="form-control" type="file" id="fileUpload" name="file" accept="application/pdf" required />
           </div>
         </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-            Annuler
-          </button>
-          <button type="submit" class="btn btn-dark">Enregistrer</button>
+        <div class="modal-footer flex-column">
+          <div id="fileUploadProgressContainer" class="w-100 mb-3 d-none">
+            <label class="form-label small text-muted mb-1">Téléchargement en cours...</label>
+            <div class="progress" style="height: 20px;">
+              <div id="fileUploadProgressBar" class="progress-bar progress-bar-striped progress-bar-animated"
+                   role="progressbar" style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
+                0%
+              </div>
+            </div>
+          </div>
+          <div class="d-flex gap-2 justify-content-end w-100">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" id="fileCancelBtn">
+              Annuler
+            </button>
+            <button type="submit" class="btn btn-dark" id="fileSubmitBtn">Enregistrer</button>
+          </div>
         </div>
       </form>
     </div>
@@ -176,6 +187,92 @@
         })
         .join(" ");
       return formattedString;
+    }
+
+    // Upload avec barre de progression
+    const fileForm = document.querySelector('#fileModal form');
+    if (fileForm) {
+      fileForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+
+        const formData = new FormData(this);
+        const progressContainer = document.getElementById('fileUploadProgressContainer');
+        const progressBar = document.getElementById('fileUploadProgressBar');
+        const submitBtn = document.getElementById('fileSubmitBtn');
+        const cancelBtn = document.getElementById('fileCancelBtn');
+
+        progressContainer.classList.remove('d-none');
+        submitBtn.disabled = true;
+        cancelBtn.disabled = true;
+
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', this.action, true);
+        xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+
+        xhr.upload.onprogress = function(e) {
+          if (e.lengthComputable) {
+            const percent = Math.round((e.loaded / e.total) * 100);
+            progressBar.style.width = percent + '%';
+            progressBar.setAttribute('aria-valuenow', percent);
+            progressBar.textContent = percent + '%';
+
+            if (percent === 100) {
+              progressBar.textContent = 'Traitement en cours...';
+            }
+          }
+        };
+
+        xhr.onload = function() {
+          if (xhr.status === 200 || xhr.status === 302) {
+            progressBar.classList.remove('progress-bar-animated');
+            progressBar.classList.add('bg-success');
+            progressBar.textContent = 'Terminé !';
+            setTimeout(() => window.location.reload(), 500);
+          } else {
+            progressBar.classList.remove('progress-bar-animated');
+            progressBar.classList.add('bg-danger');
+            progressBar.textContent = 'Erreur !';
+            submitBtn.disabled = false;
+            cancelBtn.disabled = false;
+            setTimeout(() => {
+              progressContainer.classList.add('d-none');
+              progressBar.classList.remove('bg-danger');
+              progressBar.classList.add('progress-bar-animated');
+              progressBar.style.width = '0%';
+              progressBar.textContent = '0%';
+            }, 2000);
+          }
+        };
+
+        xhr.onerror = function() {
+          progressBar.classList.remove('progress-bar-animated');
+          progressBar.classList.add('bg-danger');
+          progressBar.textContent = 'Erreur réseau !';
+          submitBtn.disabled = false;
+          cancelBtn.disabled = false;
+        };
+
+        xhr.send(formData);
+      });
+    }
+
+    // Reset progress bar quand le modal est fermé
+    const fileModal = document.getElementById('fileModal');
+    if (fileModal) {
+      fileModal.addEventListener('hidden.bs.modal', function() {
+        const progressContainer = document.getElementById('fileUploadProgressContainer');
+        const progressBar = document.getElementById('fileUploadProgressBar');
+        const submitBtn = document.getElementById('fileSubmitBtn');
+        const cancelBtn = document.getElementById('fileCancelBtn');
+
+        progressContainer.classList.add('d-none');
+        progressBar.style.width = '0%';
+        progressBar.textContent = '0%';
+        progressBar.classList.remove('bg-success', 'bg-danger');
+        progressBar.classList.add('progress-bar-animated');
+        submitBtn.disabled = false;
+        cancelBtn.disabled = false;
+      });
     }
 </script>
 @endsection

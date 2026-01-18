@@ -68,11 +68,22 @@
                                     required />
                             </div>
                         </div>
-                        <div class="modal-footer">
-                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                                Annuler
-                            </button>
-                            <button type="submit" class="btn btn-dark">Enregistrer</button>
+                        <div class="modal-footer flex-column">
+                            <div id="uploadProgressContainer" class="w-100 mb-3 d-none">
+                                <label class="form-label small text-muted mb-1">Téléchargement en cours...</label>
+                                <div class="progress" style="height: 20px;">
+                                    <div id="uploadProgressBar" class="progress-bar progress-bar-striped progress-bar-animated"
+                                         role="progressbar" style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
+                                        0%
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="d-flex gap-2 justify-content-end w-100">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" id="cancelBtn">
+                                    Annuler
+                                </button>
+                                <button type="submit" class="btn btn-dark" id="submitBtn">Enregistrer</button>
+                            </div>
                         </div>
                     </form>
                 </div>
@@ -215,6 +226,92 @@
                 form.action = `/audios/${id}`;
                 document.getElementById("audioEditTitle").value = title || "";
                 document.getElementById("audioEditCategory").value = category || "";
+            });
+        }
+
+        // Upload avec barre de progression
+        const audioForm = document.querySelector('#audioModal form');
+        if (audioForm) {
+            audioForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+
+                const formData = new FormData(this);
+                const progressContainer = document.getElementById('uploadProgressContainer');
+                const progressBar = document.getElementById('uploadProgressBar');
+                const submitBtn = document.getElementById('submitBtn');
+                const cancelBtn = document.getElementById('cancelBtn');
+
+                progressContainer.classList.remove('d-none');
+                submitBtn.disabled = true;
+                cancelBtn.disabled = true;
+
+                const xhr = new XMLHttpRequest();
+                xhr.open('POST', this.action, true);
+                xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+
+                xhr.upload.onprogress = function(e) {
+                    if (e.lengthComputable) {
+                        const percent = Math.round((e.loaded / e.total) * 100);
+                        progressBar.style.width = percent + '%';
+                        progressBar.setAttribute('aria-valuenow', percent);
+                        progressBar.textContent = percent + '%';
+
+                        if (percent === 100) {
+                            progressBar.textContent = 'Traitement en cours...';
+                        }
+                    }
+                };
+
+                xhr.onload = function() {
+                    if (xhr.status === 200 || xhr.status === 302) {
+                        progressBar.classList.remove('progress-bar-animated');
+                        progressBar.classList.add('bg-success');
+                        progressBar.textContent = 'Terminé !';
+                        setTimeout(() => window.location.reload(), 500);
+                    } else {
+                        progressBar.classList.remove('progress-bar-animated');
+                        progressBar.classList.add('bg-danger');
+                        progressBar.textContent = 'Erreur !';
+                        submitBtn.disabled = false;
+                        cancelBtn.disabled = false;
+                        setTimeout(() => {
+                            progressContainer.classList.add('d-none');
+                            progressBar.classList.remove('bg-danger');
+                            progressBar.classList.add('progress-bar-animated');
+                            progressBar.style.width = '0%';
+                            progressBar.textContent = '0%';
+                        }, 2000);
+                    }
+                };
+
+                xhr.onerror = function() {
+                    progressBar.classList.remove('progress-bar-animated');
+                    progressBar.classList.add('bg-danger');
+                    progressBar.textContent = 'Erreur réseau !';
+                    submitBtn.disabled = false;
+                    cancelBtn.disabled = false;
+                };
+
+                xhr.send(formData);
+            });
+        }
+
+        // Reset progress bar quand le modal est fermé
+        const audioModal = document.getElementById('audioModal');
+        if (audioModal) {
+            audioModal.addEventListener('hidden.bs.modal', function() {
+                const progressContainer = document.getElementById('uploadProgressContainer');
+                const progressBar = document.getElementById('uploadProgressBar');
+                const submitBtn = document.getElementById('submitBtn');
+                const cancelBtn = document.getElementById('cancelBtn');
+
+                progressContainer.classList.add('d-none');
+                progressBar.style.width = '0%';
+                progressBar.textContent = '0%';
+                progressBar.classList.remove('bg-success', 'bg-danger');
+                progressBar.classList.add('progress-bar-animated');
+                submitBtn.disabled = false;
+                cancelBtn.disabled = false;
             });
         }
     </script>

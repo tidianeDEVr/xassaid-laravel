@@ -91,6 +91,9 @@ class AudioController extends Controller
         if ($request->hasFile('audio')) {
             $audioFile = $request->file('audio');
             if (!$audioFile->isValid()) {
+                if ($request->ajax()) {
+                    return response()->json(['error' => 'Le fichier audio est invalide.'], 422);
+                }
                 return redirect()->back()->withErrors(['error' => 'Le fichier audio est invalide.']);
             }
             $baseName = MediaOptimizer::normalizeFilename(pathinfo($audioFile->getClientOriginalName(), PATHINFO_FILENAME));
@@ -114,17 +117,27 @@ class AudioController extends Controller
             if ($response->successful() && $response->json('status') === 'success') {
                 $audio->pathToFile = $uploadFilename;
             } else {
-                // Gérer les erreurs
-                return redirect()->back()->withErrors(['error' => $response->json('message') ?? 'Erreur inconnue lors de l\'enregristrement !']);
+                $errorMsg = $response->json('message') ?? 'Erreur inconnue lors de l\'enregristrement !';
+                if ($request->ajax()) {
+                    return response()->json(['error' => $errorMsg], 422);
+                }
+                return redirect()->back()->withErrors(['error' => $errorMsg]);
             }
         }
         $category = AudioCategory::where('slug', $data['category'])->first();
         if (!$category) {
+            if ($request->ajax()) {
+                return response()->json(['error' => 'Catégorie introuvable.'], 422);
+            }
             return redirect()->back()->withErrors(['error' => 'Catégorie introuvable.']);
         }
         $audio->category_id = $category->id;
         $audio->save();
 
+        if ($request->ajax()) {
+            session()->flash('success', 'Le fichier audio a été enregistré !');
+            return response()->json(['success' => 'Le fichier audio a été enregistré !']);
+        }
         return redirect()->back()->with('success', 'Le fichier audio a été enregistré !');
     }
 

@@ -26,6 +26,9 @@ class FileController extends Controller
 
         $uploaded = $request->file('file');
         if (!$uploaded || !$uploaded->isValid()) {
+            if ($request->ajax()) {
+                return response()->json(['error' => 'Le fichier est invalide.'], 422);
+            }
             return redirect()->back()->withErrors(['error' => 'Le fichier est invalide.']);
         }
 
@@ -44,11 +47,19 @@ class FileController extends Controller
         if ($response->successful() && $response->json('status') === 'success') {
             $file->pathToFile = $uploadFilename;
         } else {
-            return redirect()->back()->withErrors(['error' => $response->json('message') ?? 'Erreur inconnue lors de l\'enregristrement !']);
+            $errorMsg = $response->json('message') ?? 'Erreur inconnue lors de l\'enregristrement !';
+            if ($request->ajax()) {
+                return response()->json(['error' => $errorMsg], 422);
+            }
+            return redirect()->back()->withErrors(['error' => $errorMsg]);
         }
 
         $file->save();
 
+        if ($request->ajax()) {
+            session()->flash('success', 'Le fichier a été enregistré !');
+            return response()->json(['success' => 'Le fichier a été enregistré !']);
+        }
         return redirect()->back()->with('success', 'Le fichier a été enregistré !');
     }
 

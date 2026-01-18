@@ -4,6 +4,7 @@ FROM php:8.2-apache as web
 # Install Additional System Dependencies
 RUN apt-get update && apt-get install -y \
     libzip-dev \
+    libsqlite3-dev \
     zip \
     vim \
     ffmpeg
@@ -15,7 +16,7 @@ RUN apt-get clean && rm -rf /var/lib/apt/lists/*
 RUN a2enmod rewrite
 
 # Install PHP extensions
-RUN docker-php-ext-install pdo_mysql zip
+RUN docker-php-ext-install pdo_sqlite zip
 
 # Set PHP upload and post size limits
 COPY php.ini /usr/local/etc/php/conf.d/
