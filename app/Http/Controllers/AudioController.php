@@ -297,4 +297,28 @@ class AudioController extends Controller
             'audios' => $audios
         ]);
     }
+
+    public function getAudioBySlug($slug)
+    {
+        $audio = Audio::where('slug', $slug)->with('category')->first();
+
+        if (!$audio) {
+            return response()->json([
+                'message' => 'Audio introuvable !'
+            ], 404);
+        }
+
+        return response([
+            'audio' => $audio
+        ]);
+    }
+
+    public function sitemap()
+    {
+        $audios = Audio::select('slug', 'updated_at')->get();
+
+        return response([
+            'audios' => $audios
+        ]);
+    }
 }

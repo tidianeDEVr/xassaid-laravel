@@ -24,4 +24,6 @@ Route::get('/files/sitemap', [FileController::class, 'sitemap']);
 
 Route::get('/audios/category/{category}', [AudioController::class, 'frontAudiosbyCategory']);
 Route::get('/audios/page/{page}', [AudioController::class, 'paginateAudio'])->whereNumber('page');
+Route::get('/audios/sitemap', [AudioController::class, 'sitemap']);
+Route::get('/audios/slug/{slug}', [AudioController::class, 'getAudioBySlug']);
 Route::get('/audios/{type}', [AudioController::class, 'frontAudioCategoriesbyType']);
