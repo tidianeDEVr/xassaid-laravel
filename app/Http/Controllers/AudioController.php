@@ -315,10 +315,7 @@ class AudioController extends Controller
 
     public function sitemap()
     {
-        $audios = Audio::select('slug', 'updated_at')->get();
-
-        return response([
-            'audios' => $audios
-        ]);
+        $slugs = Audio::all()->pluck('slug');
+        return response()->json($slugs);
     }
 }

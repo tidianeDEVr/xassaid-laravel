@@ -66,3 +66,7 @@ sync-db:
 	scp -i $(SSH_KEY) database/database.sqlite $(REMOTE_USER)@$(REMOTE_HOST):$(REMOTE_PATH)/database/
 	ssh -i $(SSH_KEY) $(REMOTE_USER)@$(REMOTE_HOST) "chmod 666 $(REMOTE_PATH)/database/database.sqlite"
 	@echo "Base de données synchronisée avec succès"
+
+pull-db:
+	scp -i $(SSH_KEY) $(REMOTE_USER)@$(REMOTE_HOST):$(REMOTE_PATH)/database/database.sqlite database/database.sqlite
+	@echo "Base de données téléchargée avec succès"
