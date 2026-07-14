@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use App\Http\Requests\AudioCategoriesRequest;
 use App\Http\Requests\AudioRequest;
 use App\Http\Requests\AudioUpdateRequest;
@@ -76,7 +77,7 @@ class AudioController extends Controller
                 $category->coverImagePath = $uploadFilename;
             } else {
                 // Gérer les erreurs
-                return redirect()->back()->withErrors(['error' => $response->json('message') ?? 'Erreur inconnue lors de la création !']);
+                return redirect()->back()->withErrors(['error' => $this->uploadErrorMessage($response)]);
             }
         }
         $category->save();
@@ -98,26 +99,42 @@ class AudioController extends Controller
             }
             $baseName = MediaOptimizer::normalizeFilename(pathinfo($audioFile->getClientOriginalName(), PATHINFO_FILENAME));
             $name = $baseName !== '' ? $baseName . '-' . time() : (string) time();
-            $optimized = MediaOptimizer::optimizeAudio($audioFile, (int) env('XASSAID_AUDIO_BITRATE', 96));
-            $uploadFilename = $name . '.' . $optimized['extension'];
 
-            // UPLOAD FILE
-            $endpoint = env('XASSAID_FILES_URI') . '/upload.php';
-            $response = Http::timeout(1000)->attach('file', fopen($optimized['path'], 'r'), $uploadFilename)
-                ->post($endpoint, [
-                    'key' => env('XASSAID_UPLOAD_KEY'),
-                    'filename' => $name,
-                ]);
+            try {
+                $optimized = MediaOptimizer::optimizeAudio($audioFile, (int) env('XASSAID_AUDIO_BITRATE', 96));
 
-            if ($optimized['cleanup']) {
-                @unlink($optimized['path']);
+                if (!empty($optimized['error'])) {
+                    Log::warning('Optimisation audio échouée, fichier original utilisé.', ['file' => $uploadFilename ?? $name, 'error' => $optimized['error']]);
+                }
+
+                $uploadFilename = $name . '.' . $optimized['extension'];
+
+                // UPLOAD FILE
+                $endpoint = env('XASSAID_FILES_URI') . '/upload.php';
+                $response = Http::timeout(1000)->attach('file', fopen($optimized['path'], 'r'), $uploadFilename)
+                    ->post($endpoint, [
+                        'key' => env('XASSAID_UPLOAD_KEY'),
+                        'filename' => $name,
+                    ]);
+            } catch (\Throwable $e) {
+                Log::error('Exception lors du traitement de l\'audio.', ['error' => $e->getMessage()]);
+                $errorMsg = 'Exception lors du traitement du fichier : ' . $e->getMessage();
+                if ($request->ajax()) {
+                    return response()->json(['error' => $errorMsg], 500);
+                }
+                return redirect()->back()->withErrors(['error' => $errorMsg]);
+            } finally {
+                if (isset($optimized) && $optimized['cleanup']) {
+                    @unlink($optimized['path']);
+                }
             }
 
             // Vérifiez la réponse
             if ($response->successful() && $response->json('status') === 'success') {
                 $audio->pathToFile = $uploadFilename;
             } else {
-                $errorMsg = $response->json('message') ?? 'Erreur inconnue lors de l\'enregristrement !';
+                $errorMsg = $this->uploadErrorMessage($response, $optimized['error'] ?? null);
+                Log::error('Upload audio refusé par le serveur de fichiers.', ['status' => $response->status(), 'body' => mb_substr($response->body(), 0, 500)]);
                 if ($request->ajax()) {
                     return response()->json(['error' => $errorMsg], 422);
                 }
@@ -177,7 +194,7 @@ class AudioController extends Controller
             if ($response->successful() && $response->json('status') === 'success') {
                 $audio->pathToFile = $uploadFilename;
             } else {
-                return redirect()->back()->withErrors(['error' => $response->json('message') ?? 'Erreur inconnue lors de l\'enregristrement !']);
+                return redirect()->back()->withErrors(['error' => $this->uploadErrorMessage($response, $optimized['error'] ?? null)]);
             }
         }
 
@@ -224,7 +241,7 @@ class AudioController extends Controller
             if ($response->successful() && $response->json('status') === 'success') {
                 $category->coverImagePath = $uploadFilename;
             } else {
-                return redirect()->back()->withErrors(['error' => $response->json('message') ?? 'Erreur inconnue lors de la modification !']);
+                return redirect()->back()->withErrors(['error' => $this->uploadErrorMessage($response)]);
             }
         }
 
@@ -242,6 +259,23 @@ class AudioController extends Controller
         $category->delete();
 
         return redirect()->back()->with('success', 'La catégorie a été supprimée !');
+    }
+
+    private function uploadErrorMessage($response, ?string $optimizeError = null): string
+    {
+        $detail = $response->json('message');
+        if (!$detail) {
+            $body = trim(mb_substr($response->body(), 0, 200));
+            $detail = $body !== '' ? $body : 'aucune réponse du serveur de fichiers';
+        }
+
+        $message = 'Échec de l\'upload (HTTP ' . $response->status() . ') : ' . $detail;
+
+        if ($optimizeError) {
+            $message .= ' — Optimisation : ' . $optimizeError;
+        }
+
+        return $message;
     }
 
     function generateSlug($string)

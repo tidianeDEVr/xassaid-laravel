@@ -108,7 +108,7 @@ class MediaOptimizer
     }
 
     /**
-     * @return array{path: string, extension: string, cleanup: bool}
+     * @return array{path: string, extension: string, cleanup: bool, error: ?string}
      */
     public static function optimizeAudio(UploadedFile $file, int $bitrateKbps = 96): array
     {
@@ -117,7 +117,7 @@ class MediaOptimizer
         $ffmpeg = env('FFMPEG_BIN');
 
         if (!$ffmpeg) {
-            return ['path' => $path, 'extension' => $extension, 'cleanup' => false];
+            return ['path' => $path, 'extension' => $extension, 'cleanup' => false, 'error' => 'FFMPEG_BIN non configuré : audio envoyé sans compression.'];
         }
 
         $output = tempnam(sys_get_temp_dir(), 'aud_') . '.mp3';
@@ -136,16 +136,33 @@ class MediaOptimizer
             $output,
         ]);
         $process->setTimeout(120);
-        $process->run();
+
+        try {
+            $process->run();
+        } catch (\Throwable $e) {
+            if (file_exists($output)) {
+                @unlink($output);
+            }
+
+            return ['path' => $path, 'extension' => $extension, 'cleanup' => false, 'error' => 'FFmpeg : ' . $e->getMessage()];
+        }
 
         if ($process->isSuccessful() && file_exists($output) && filesize($output) > 0) {
-            return ['path' => $output, 'extension' => 'mp3', 'cleanup' => true];
+            return ['path' => $output, 'extension' => 'mp3', 'cleanup' => true, 'error' => null];
         }
 
         if (file_exists($output)) {
             @unlink($output);
         }
 
-        return ['path' => $path, 'extension' => $extension, 'cleanup' => false];
+        $stderr = trim($process->getErrorOutput());
+        $error = 'FFmpeg a échoué (code ' . $process->getExitCode() . ')';
+        if ($stderr !== '') {
+            // FFmpeg est très verbeux : on ne garde que les dernières lignes, les plus utiles
+            $lines = preg_split('/\r?\n/', $stderr);
+            $error .= ' : ' . implode(' | ', array_slice($lines, -3));
+        }
+
+        return ['path' => $path, 'extension' => $extension, 'cleanup' => false, 'error' => $error];
     }
 }

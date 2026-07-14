@@ -52,8 +52,8 @@
                                 <div class="col">
                                     <label for="category" class="form-label"><span
                                             class="text-danger">*</span>Catégorie</label>
-                                    <select class="form-select" aria-label="Default select example" name="category" id="category" required>
-                                        <option selected value="0">-- Veuillez choisir une catégorie --</option>
+                                    <select class="form-select" name="category" id="category" required>
+                                        <option selected value="">-- Veuillez choisir une catégorie --</option>
                                         @foreach ($categories as $category)
                                             <option value="{{ $category->slug }}">{{ $category->type }} -
                                                 {{ $category->title }}</option>
@@ -69,6 +69,7 @@
                             </div>
                         </div>
                         <div class="modal-footer flex-column">
+                            <div id="uploadErrorMessage" class="alert alert-danger w-100 mb-2 small d-none" style="white-space: pre-wrap; word-break: break-word;"></div>
                             <div id="uploadProgressContainer" class="w-100 mb-3 d-none">
                                 <label class="form-label small text-muted mb-1">Téléchargement en cours...</label>
                                 <div class="progress" style="height: 20px;">
@@ -190,6 +191,22 @@
     <script>
         $(document).ready(function() {
             var dataTable = $("#audios").DataTable();
+
+            // Select de catégorie avec recherche (équivalent p-select filter de PrimeNG)
+            $('#category').select2({
+                theme: 'bootstrap-5',
+                language: 'fr',
+                placeholder: '-- Veuillez choisir une catégorie --',
+                width: '100%',
+                dropdownParent: $('#audioModal')
+            });
+            $('#audioEditCategory').select2({
+                theme: 'bootstrap-5',
+                language: 'fr',
+                placeholder: '-- Veuillez choisir une catégorie --',
+                width: '100%',
+                dropdownParent: $('#audioEditModal')
+            });
         });
         let audioFile = document.querySelector("#audio");
         let titleInput = document.querySelector("#title");
@@ -225,7 +242,7 @@
 
                 form.action = `/audios/${id}`;
                 document.getElementById("audioEditTitle").value = title || "";
-                document.getElementById("audioEditCategory").value = category || "";
+                $("#audioEditCategory").val(category || "").trigger("change");
             });
         }
 
@@ -240,7 +257,10 @@
                 const progressBar = document.getElementById('uploadProgressBar');
                 const submitBtn = document.getElementById('submitBtn');
                 const cancelBtn = document.getElementById('cancelBtn');
+                const errorBox = document.getElementById('uploadErrorMessage');
 
+                errorBox.classList.add('d-none');
+                errorBox.textContent = '';
                 progressContainer.classList.remove('d-none');
                 submitBtn.disabled = true;
                 cancelBtn.disabled = true;
@@ -269,9 +289,28 @@
                         progressBar.textContent = 'Terminé !';
                         setTimeout(() => window.location.reload(), 500);
                     } else {
+                        let message = 'Erreur inattendue (HTTP ' + xhr.status + ')';
+                        try {
+                            const res = JSON.parse(xhr.responseText);
+                            if (res.error) {
+                                message = res.error;
+                            } else if (res.errors) {
+                                // Erreurs de validation Laravel : { errors: { champ: [messages] } }
+                                message = Object.values(res.errors).flat().join('\n');
+                            } else if (res.message) {
+                                message = res.message;
+                            }
+                        } catch (e) {
+                            if (xhr.responseText) {
+                                message += ' : ' + xhr.responseText.substring(0, 300);
+                            }
+                        }
+
                         progressBar.classList.remove('progress-bar-animated');
                         progressBar.classList.add('bg-danger');
-                        progressBar.textContent = 'Erreur !';
+                        progressBar.textContent = 'Erreur (HTTP ' + xhr.status + ')';
+                        errorBox.textContent = message;
+                        errorBox.classList.remove('d-none');
                         submitBtn.disabled = false;
                         cancelBtn.disabled = false;
                         setTimeout(() => {
@@ -288,6 +327,8 @@
                     progressBar.classList.remove('progress-bar-animated');
                     progressBar.classList.add('bg-danger');
                     progressBar.textContent = 'Erreur réseau !';
+                    errorBox.textContent = 'Erreur réseau : impossible de joindre le serveur (connexion interrompue ou serveur injoignable).';
+                    errorBox.classList.remove('d-none');
                     submitBtn.disabled = false;
                     cancelBtn.disabled = false;
                 };
@@ -312,6 +353,10 @@
                 progressBar.classList.add('progress-bar-animated');
                 submitBtn.disabled = false;
                 cancelBtn.disabled = false;
+
+                const errorBox = document.getElementById('uploadErrorMessage');
+                errorBox.classList.add('d-none');
+                errorBox.textContent = '';
             });
         }
     </script>
