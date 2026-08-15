@@ -3,11 +3,12 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use App\Models\Concerns\HasNaturalSortKey;
 use Illuminate\Database\Eloquent\Model;
 
 class Audio extends Model
 {
-    use HasFactory;
+    use HasFactory, HasNaturalSortKey;
 
     /**
      * The attributes that are mass assignable.

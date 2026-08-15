@@ -25,21 +25,6 @@ class AudioController extends Controller
     {
         $categories = AudioCategory::all();
         $audios = Audio::all();
-
-        // Create Static
-        // [
-        //     "title" => 'Foulkou 01',
-        //     "slug" => 'foulkou-01',
-        //     "pathToFile" => "Foulkou_01.mp3",
-        //     "category_id" => 31
-        // ],
-        $toCreates = [];
-
-        // foreach ($toCreates as $audio) {
-        //     $aud = new Audio($audio);
-        //     $aud->save();
-        // }
-
         return view('pages.audios', ['categories' => $categories, 'audios' => $audios]);
     }
 
@@ -295,9 +280,10 @@ class AudioController extends Controller
 
         $perPage = 64;
         $page = (int) $page;
-        $audios = Audio::skip(($page - 1) * $perPage)
+        $audios = Audio::orderByTitleNatural()
+            ->skip(($page - 1) * $perPage)
             ->take($perPage)
-            ->orderBy('title', 'asc')->get();
+            ->get();
 
         return response([
             'audios' => $audios
@@ -307,7 +293,7 @@ class AudioController extends Controller
     public function frontAudioCategoriesbyType($type)
     {
         $categories = AudioCategory::where('type', $type)
-            ->orderBy('title', 'asc')
+            ->orderByTitleNatural()
             ->get();
         return response([
             'categories' => $categories
@@ -324,7 +310,7 @@ class AudioController extends Controller
             ], 404);
         }
 
-        $audios = Audio::where('category_id', $category->id)->orderBy('title', 'asc')->get();
+        $audios = Audio::where('category_id', $category->id)->orderByTitleNatural()->get();
 
         return response([
             'category' => $category,

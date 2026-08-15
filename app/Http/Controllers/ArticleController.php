@@ -122,8 +122,9 @@ class ArticleController extends Controller
         $perPage = 10;
         $page = (int) $page;
 
-        $articles = Article::skip(($page - 1) * $perPage)->take($perPage)
-            ->orderBy('title', 'asc')->get();
+        $articles = Article::orderByTitleNatural()
+            ->skip(($page - 1) * $perPage)->take($perPage)
+            ->get();
 
         return response([
             'articles' => $articles
