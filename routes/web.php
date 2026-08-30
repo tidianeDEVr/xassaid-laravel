@@ -7,6 +7,7 @@ use App\Http\Controllers\OverviewController;
 use App\Http\Controllers\ArticleController;
 use App\Http\Controllers\SecurityController;
 use App\Http\Controllers\UserController;
+use App\Http\Controllers\VideoModerationController;
 use App\Http\Middleware\EnsureUserIsAdmin;
 use App\Http\Middleware\EnsureUserIsSuperAdmin;
 use Illuminate\Support\Facades\Route;
@@ -44,6 +45,17 @@ Route::prefix('/categories')->group(function () {
     Route::put('/audios/{category}', [AudioController::class, 'updateCategory'])->middleware(EnsureUserIsAdmin::class);
     Route::delete('/audios/{category}', [AudioController::class, 'deleteCategory'])->middleware([EnsureUserIsAdmin::class, EnsureUserIsSuperAdmin::class]);
 });
+
+// Modération du feed vidéo
+Route::get('/videos', [VideoModerationController::class, 'renderVideos'])->middleware(EnsureUserIsAdmin::class);
+Route::post('/videos/{video}/approve', [VideoModerationController::class, 'approve'])->middleware(EnsureUserIsAdmin::class);
+Route::post('/videos/{video}/reject', [VideoModerationController::class, 'reject'])->middleware(EnsureUserIsAdmin::class);
+Route::delete('/videos/{video}', [VideoModerationController::class, 'destroy'])->middleware([EnsureUserIsAdmin::class, EnsureUserIsSuperAdmin::class]);
+Route::post('/videos/import', [VideoModerationController::class, 'importVideos'])->middleware(EnsureUserIsAdmin::class);
+Route::get('/app-users', [VideoModerationController::class, 'renderAppUsers'])->middleware(EnsureUserIsAdmin::class);
+Route::post('/app-users', [VideoModerationController::class, 'createAppUser'])->middleware(EnsureUserIsAdmin::class);
+Route::put('/app-users/{appUser}/certify', [VideoModerationController::class, 'toggleCertified'])->middleware(EnsureUserIsAdmin::class);
+Route::put('/app-users/{appUser}/password', [VideoModerationController::class, 'resetAppUserPassword'])->middleware(EnsureUserIsAdmin::class);
 
 // Securities
 Route::delete('/logout', [SecurityController::class, 'logout'])->name('security.logout');

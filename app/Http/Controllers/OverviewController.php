@@ -35,6 +35,43 @@ class OverviewController extends Controller
         ]);
     }
 
+    /**
+     * Homepage de l'app mobile V2 : chaque catégorie porte son nombre d'audios.
+     */
+    public function frontHomepageV2()
+    {
+        $byType = function (string $type) {
+            return AudioCategory::where('type', $type)
+                ->withCount('audios')
+                ->orderBy('isFeatured', 'desc')
+                ->take(12)
+                ->get();
+        };
+
+        return response([
+            "makkGni" => $byType('makk-gni'),
+            "kourelsYii" => $byType('kourels-yii'),
+            "rajassKatYii" => $byType('rajass-kat-yii'),
+            "autres" => $byType('autres')
+        ]);
+    }
+
+    /**
+     * Recherche de l'app mobile V2 : ajoute les catégories (récitants, kourels)
+     * aux résultats, avec leur nombre d'audios.
+     */
+    public function searchV2(String $term)
+    {
+        $payload = $this->searchAudiosAndFile($term)->original;
+
+        $payload['categories'] = AudioCategory::where('title', 'LIKE', "%{$term}%")
+            ->withCount('audios')
+            ->orderBy('isFeatured', 'desc')
+            ->get();
+
+        return response($payload);
+    }
+
     public function searchAudiosAndFile(String $term)
     {
         $normalizedTerm = $this->normalizeForSearch($term);

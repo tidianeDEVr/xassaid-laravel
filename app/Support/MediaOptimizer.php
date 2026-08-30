@@ -108,6 +108,52 @@ class MediaOptimizer
     }
 
     /**
+     * Avatar carré : recadrage centré puis redimensionnement en
+     * {$size}x{$size} (600 par défaut), sortie JPEG.
+     *
+     * @return array{path: string, extension: string, cleanup: bool}|null
+     *         null si l'image est illisible.
+     */
+    public static function squareAvatar(UploadedFile $file, int $size = 600, int $quality = 85): ?array
+    {
+        $path = $file->getPathname();
+        $info = @getimagesize($path);
+        if (!$info) {
+            return null;
+        }
+
+        [$width, $height, $type] = $info;
+        $source = match ($type) {
+            IMAGETYPE_JPEG => function_exists('imagecreatefromjpeg') ? @imagecreatefromjpeg($path) : null,
+            IMAGETYPE_PNG => function_exists('imagecreatefrompng') ? @imagecreatefrompng($path) : null,
+            IMAGETYPE_WEBP => function_exists('imagecreatefromwebp') ? @imagecreatefromwebp($path) : null,
+            default => null,
+        };
+        if (!$source) {
+            return null;
+        }
+
+        // Recadrage centré sur le plus petit côté.
+        $crop = min($width, $height);
+        $cropX = (int) (($width - $crop) / 2);
+        $cropY = (int) (($height - $crop) / 2);
+
+        $dest = imagecreatetruecolor($size, $size);
+        // Le JPEG n'a pas d'alpha : les PNG/WebP transparents sont aplatis
+        // sur le fond sombre de l'app.
+        $background = imagecolorallocate($dest, 24, 24, 27);
+        imagefill($dest, 0, 0, $background);
+        imagecopyresampled($dest, $source, 0, 0, $cropX, $cropY, $size, $size, $crop, $crop);
+
+        $tmpPath = tempnam(sys_get_temp_dir(), 'ava_');
+        imagejpeg($dest, $tmpPath, $quality);
+        imagedestroy($dest);
+        imagedestroy($source);
+
+        return ['path' => $tmpPath, 'extension' => 'jpg', 'cleanup' => true];
+    }
+
+    /**
      * @return array{path: string, extension: string, cleanup: bool, error: ?string}
      */
     public static function optimizeAudio(UploadedFile $file, int $bitrateKbps = 96): array

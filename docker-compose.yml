@@ -12,3 +12,16 @@ services:
         volumes:
             - .:/var/www/html
         restart: always
+
+    # Worker de queue : transcodage vidéo (TranscodeVideoJob).
+    # Un seul worker, volontairement : SQLite (contention d'écriture) et
+    # FFmpeg (CPU) ne supportent pas bien le parallélisme sur ce VPS.
+    worker:
+        image: laravel_app
+        container_name: laravel_worker
+        command: php artisan queue:work --tries=2 --timeout=1200 --sleep=3
+        volumes:
+            - .:/var/www/html
+        restart: always
+        depends_on:
+            - web

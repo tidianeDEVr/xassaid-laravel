@@ -56,6 +56,12 @@
                     <li class="nav-item">
                         <a class="nav-link" href="/library">Bibliothèque</a>
                     </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/videos">Vidéos</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/app-users">Comptes app</a>
+                    </li>
                     @if ($canManageAdmins)
                         <li class="nav-item">
                             <a class="nav-link" href="/users">Utilisateurs</a>

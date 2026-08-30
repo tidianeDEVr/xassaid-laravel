@@ -65,6 +65,12 @@ return [
             'model' => env('AUTH_MODEL', App\Models\User::class),
         ],
 
+        // Utilisateurs de l'application mobile (feed vidéo).
+        'app_users' => [
+            'driver' => 'eloquent',
+            'model' => App\Models\AppUser::class,
+        ],
+
         // 'users' => [
         //     'driver' => 'database',
         //     'table' => 'users',

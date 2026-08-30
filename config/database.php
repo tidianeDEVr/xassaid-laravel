@@ -37,6 +37,22 @@ return [
             'database' => env('DB_DATABASE', database_path('database.sqlite')),
             'prefix' => '',
             'foreign_key_constraints' => env('DB_FOREIGN_KEYS', true),
+            // Le web et le worker de queue partagent le même fichier : WAL
+            // autorise lecteurs et écrivain simultanés, busy_timeout évite
+            // les « database is locked » immédiats.
+            'journal_mode' => env('DB_JOURNAL_MODE', 'wal'),
+            'busy_timeout' => (int) env('DB_BUSY_TIMEOUT', 5000),
+        ],
+
+        // Source du transfert SQLite -> MySQL (`php artisan db:to-mysql`).
+        // Chemin fixe : une fois DB_CONNECTION basculé sur mysql, DB_DATABASE
+        // vaut « xassaidc_v2 » et la connexion « sqlite » ci-dessus ne pointe
+        // plus aucun fichier.
+        'sqlite_legacy' => [
+            'driver' => 'sqlite',
+            'database' => env('DB_LEGACY_SQLITE', database_path('database.sqlite')),
+            'prefix' => '',
+            'foreign_key_constraints' => false,
         ],
 
         'mysql' => [
@@ -54,8 +70,14 @@ return [
             'prefix_indexes' => true,
             'strict' => true,
             'engine' => null,
+            // PHP 8.5 déprécie PDO::MYSQL_ATTR_SSL_CA au profit de
+            // Pdo\Mysql::ATTR_SSL_CA. La notice est émise au chargement de la
+            // config, avant le gestionnaire d'erreurs de Laravel, et pollue le
+            // corps des réponses JSON.
             'options' => extension_loaded('pdo_mysql') ? array_filter([
-                PDO::MYSQL_ATTR_SSL_CA => env('MYSQL_ATTR_SSL_CA'),
+                (class_exists(\Pdo\Mysql::class)
+                    ? \Pdo\Mysql::ATTR_SSL_CA
+                    : PDO::MYSQL_ATTR_SSL_CA) => env('MYSQL_ATTR_SSL_CA'),
             ]) : [],
         ],
 
@@ -74,8 +96,14 @@ return [
             'prefix_indexes' => true,
             'strict' => true,
             'engine' => null,
+            // PHP 8.5 déprécie PDO::MYSQL_ATTR_SSL_CA au profit de
+            // Pdo\Mysql::ATTR_SSL_CA. La notice est émise au chargement de la
+            // config, avant le gestionnaire d'erreurs de Laravel, et pollue le
+            // corps des réponses JSON.
             'options' => extension_loaded('pdo_mysql') ? array_filter([
-                PDO::MYSQL_ATTR_SSL_CA => env('MYSQL_ATTR_SSL_CA'),
+                (class_exists(\Pdo\Mysql::class)
+                    ? \Pdo\Mysql::ATTR_SSL_CA
+                    : PDO::MYSQL_ATTR_SSL_CA) => env('MYSQL_ATTR_SSL_CA'),
             ]) : [],
         ],
 

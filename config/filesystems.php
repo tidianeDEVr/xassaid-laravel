@@ -17,6 +17,19 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Disque des médias du feed vidéo
+    |--------------------------------------------------------------------------
+    |
+    | Avatars, HLS, posters et MP4 téléchargeables passent par ce disque via
+    | App\Support\MediaStorage : `public` en dev (servi par /storage), `s3`
+    | en production (bucket public, cf. variables AWS_*).
+    |
+    */
+
+    'media_disk' => env('MEDIA_DISK', 'public'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Filesystem Disks
     |--------------------------------------------------------------------------
     |
@@ -53,7 +66,10 @@ return [
             'url' => env('AWS_URL'),
             'endpoint' => env('AWS_ENDPOINT'),
             'use_path_style_endpoint' => env('AWS_USE_PATH_STYLE_ENDPOINT', false),
-            'throw' => false,
+            // Pas de `visibility` ici : les buckets modernes désactivent les
+            // ACLs par objet (l'écriture échouerait). La lecture publique est
+            // portée par la bucket policy (s3:GetObject pour tous).
+            'throw' => true,
         ],
 
     ],

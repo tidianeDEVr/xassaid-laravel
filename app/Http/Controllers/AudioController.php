@@ -300,6 +300,20 @@ class AudioController extends Controller
         ]);
     }
 
+    /**
+     * Liste des catégories d'un type, avec leur nombre d'audios (app V2).
+     */
+    public function frontAudioCategoriesbyTypeV2($type)
+    {
+        $categories = AudioCategory::where('type', $type)
+            ->withCount('audios')
+            ->orderByTitleNatural()
+            ->get();
+        return response([
+            'categories' => $categories
+        ]);
+    }
+
     public function frontAudiosbyCategory($category)
     {
         $category = AudioCategory::where('slug', $category)->first();
