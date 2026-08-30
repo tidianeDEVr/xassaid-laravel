@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Support\AvatarFile;
 use Illuminate\Foundation\Http\FormRequest;
 
 class AppRegisterRequest extends FormRequest
@@ -24,7 +25,7 @@ class AppRegisterRequest extends FormRequest
             'username' => ['required', 'string', 'regex:/^[a-z0-9_.]{3,30}$/', 'unique:app_users,username'],
             'display_name' => ['required', 'string', 'min:2', 'max:50'],
             'password' => ['required', 'string', 'min:6', 'max:72'],
-            'avatar' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
+            'avatar' => array_merge(['nullable'], AvatarFile::RULES),
         ];
     }
 

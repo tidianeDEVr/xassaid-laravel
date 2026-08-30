@@ -67,7 +67,7 @@
             <td>{{ $index + 1 }}</td>
             <td>
               @if ($video->poster_path)
-                <img src="{{ url('storage/' . $video->poster_path) }}" alt="poster"
+                <img src="{{ $video->posterUrl() }}" alt="poster"
                      style="width: 54px; height: 96px; object-fit: cover; border-radius: 6px;" />
               @else
                 <span class="text-muted">—</span>
@@ -101,10 +101,13 @@
             @endif
             <td>
               <div class="d-flex gap-2">
-                @if ($video->hls_path)
+                @if ($video->download_path || $video->hls_path)
+                  {{-- Aperçu : MP4 en priorité (lecture native, pas de CORS),
+                       HLS en repli pour les vidéos sans download.mp4. --}}
                   <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal"
                     data-bs-target="#videoPreviewModal"
-                    data-src="{{ url('storage/' . $video->hls_path) }}"
+                    data-src="{{ $video->downloadUrl() ?? $video->hlsUrl() }}"
+                    data-kind="{{ $video->download_path ? 'mp4' : 'hls' }}"
                     data-title="{{ $video->author?->display_name }} — {{ \Illuminate\Support\Str::limit($video->description, 60) }}">
                     <i class="ri-play-circle-line"></i>
                   </button>
@@ -186,7 +189,8 @@
       $("#videosTable").DataTable({ order: [] });
     });
 
-    // Aperçu HLS : natif sur Safari, hls.js ailleurs.
+    // Aperçu : MP4 en lecture native (cas normal) ; HLS en repli —
+    // natif sur Safari, hls.js ailleurs.
     const previewModal = document.getElementById('videoPreviewModal');
     const previewPlayer = document.getElementById('videoPreviewPlayer');
     let hlsInstance = null;
@@ -194,10 +198,13 @@
     if (previewModal) {
       previewModal.addEventListener('show.bs.modal', function (event) {
         const src = event.relatedTarget.getAttribute('data-src');
+        const kind = event.relatedTarget.getAttribute('data-kind') || 'hls';
         document.getElementById('videoPreviewTitle').textContent =
           event.relatedTarget.getAttribute('data-title') || 'Aperçu';
 
-        if (previewPlayer.canPlayType('application/vnd.apple.mpegurl')) {
+        if (kind === 'mp4') {
+          previewPlayer.src = src;
+        } else if (previewPlayer.canPlayType('application/vnd.apple.mpegurl')) {
           previewPlayer.src = src;
         } else if (window.Hls && Hls.isSupported()) {
           hlsInstance = new Hls();

@@ -166,6 +166,11 @@ class MediaOptimizer
             return ['path' => $path, 'extension' => $extension, 'cleanup' => false, 'error' => 'FFMPEG_BIN non configuré : audio envoyé sans compression.'];
         }
 
+        // Chemin inexistant (ex. .env copié d'une autre machine) : PATH.
+        if (str_contains($ffmpeg, '/') && !is_file($ffmpeg)) {
+            $ffmpeg = 'ffmpeg';
+        }
+
         $output = tempnam(sys_get_temp_dir(), 'aud_') . '.mp3';
 
         $process = new Process([

@@ -312,7 +312,15 @@ class TranscodeVideoJob implements ShouldQueue
 
     private function ffmpegBin(): string
     {
-        return env('FFMPEG_BIN', 'ffmpeg');
+        // Un FFMPEG_BIN pointant un chemin inexistant (ex. chemin du poste de
+        // dev copié dans le .env du serveur) donnerait un exec silencieux en
+        // exit 127 : on retombe sur le PATH.
+        $configured = (string) env('FFMPEG_BIN', 'ffmpeg');
+        if (str_contains($configured, '/') && !is_file($configured)) {
+            return 'ffmpeg';
+        }
+
+        return $configured;
     }
 
     private function ffprobeBin(): string

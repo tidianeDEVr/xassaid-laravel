@@ -41,11 +41,17 @@ class ImportVideoJob implements ShouldQueue
             mkdir($directory, 0775, true);
         }
 
+        // Instagram/YouTube bloquent souvent les IP de datacenter : un fichier
+        // de cookies (format Netscape, exporté d'un navigateur connecté) lève
+        // le blocage. Optionnel : YTDLP_COOKIES=/chemin/cookies.txt dans .env.
+        $cookies = (string) env('YTDLP_COOKIES', '');
+
         $process = new Process([
             $this->ytDlpBin(),
             '--no-playlist',
             '--no-simulate',
             '--max-filesize', '500M',
+            ...($cookies !== '' && is_file($cookies) ? ['--cookies', $cookies] : []),
             // Meilleure piste vidéo+audio, sortie mp4 (fusion via ffmpeg).
             '-f', 'bv*[ext=mp4]+ba[ext=m4a]/b[ext=mp4]/b',
             '--merge-output-format', 'mp4',
@@ -54,21 +60,28 @@ class ImportVideoJob implements ShouldQueue
             $this->sourceUrl,
         ]);
         $process->setTimeout($this->timeout - 60);
-        $process->run();
+        $startError = null;
+        try {
+            $process->run();
+        } catch (\Throwable $e) {
+            // Binaire introuvable ou non exécutable : pas de stderr du tout.
+            $startError = $e->getMessage();
+        }
 
         $original = "$directory/original.mp4";
-        if (!$process->isSuccessful() || !is_file($original)) {
+        if ($startError !== null || !$process->isSuccessful() || !is_file($original)) {
+            $stderr = $startError ?? trim($process->getErrorOutput());
             Log::error('Import yt-dlp échoué', [
                 'video_id' => $video->id,
                 'url' => $this->sourceUrl,
                 'stderr' => implode(' | ', array_slice(
-                    preg_split('/\r?\n/', trim($process->getErrorOutput())),
+                    preg_split('/\r?\n/', $stderr),
                     -3,
                 )),
             ]);
             $video->update([
                 'status' => Video::STATUS_FAILED,
-                'rejected_reason' => 'Téléchargement impossible depuis le lien.',
+                'rejected_reason' => $this->failureReason($stderr),
             ]);
             Storage::disk('local')->deleteDirectory('videos-src/' . $video->id);
             return;
@@ -105,5 +118,27 @@ class ImportVideoJob implements ShouldQueue
     private function ytDlpBin(): string
     {
         return env('YTDLP_BIN', 'yt-dlp');
+    }
+
+    /** Motif lisible dans le back-office selon la cause réelle de l'échec. */
+    private function failureReason(string $stderr): string
+    {
+        $haystack = strtolower($stderr);
+
+        if (str_contains($haystack, 'login') || str_contains($haystack, 'rate-limit')
+            || str_contains($haystack, 'not available') || str_contains($haystack, 'restricted')) {
+            return 'La plateforme bloque le serveur (connexion requise) — configurer YTDLP_COOKIES.';
+        }
+        if (str_contains($haystack, '404') || str_contains($haystack, 'not found')) {
+            return 'Lien introuvable ou vidéo supprimée.';
+        }
+        if (str_contains($haystack, 'no such file') || str_contains($haystack, 'not found: yt-dlp')) {
+            return 'yt-dlp absent du serveur — rebuild de l\'image Docker requis.';
+        }
+        if (str_contains($haystack, 'max-filesize')) {
+            return 'Vidéo trop volumineuse (500 Mo maximum).';
+        }
+
+        return 'Téléchargement impossible depuis le lien.';
     }
 }

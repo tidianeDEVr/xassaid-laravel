@@ -18,14 +18,23 @@ class VideoFeedController extends Controller
     private const PAGE_SIZE_MAX = 20;
 
     /**
-     * GET /v2/feed?kind=forYou|following&cursor=&limit=
+     * GET /v2/feed?kind=forYou|following&cursor=&limit=&seed=
      * Public ; le token (optionnel) enrichit is_liked / is_followed.
+     *
+     * « Pour toi » avec `seed` : ordre pseudo-aléatoire propre à chaque
+     * appareil (voir seededFeed). Sans `seed` (anciennes versions de l'app)
+     * ou pour « Abonnements » : ordre chronologique.
      */
     public function feed(Request $request)
     {
         $user = auth('sanctum')->user();
         $kind = $request->query('kind', 'forYou');
         $limit = min(max((int) $request->query('limit', 5), 1), self::PAGE_SIZE_MAX);
+
+        $seed = $request->query('seed');
+        if ($kind !== 'following' && $seed !== null && preg_match('/^\d{1,10}$/', (string) $seed)) {
+            return $this->seededFeed($request, $user, (int) $seed, $limit);
+        }
 
         $query = Video::with('author')
             ->where('status', Video::STATUS_PUBLISHED)
@@ -65,6 +74,44 @@ class VideoFeedController extends Controller
             'data' => VideoResource::collection($videos),
             'next_cursor' => $hasMore && $last
                 ? ApiCursor::encode(['p' => $last->published_at->toDateTimeString(), 'i' => $last->id])
+                : null,
+        ]);
+    }
+
+    /**
+     * Fil « Pour toi » en ordre pseudo-aléatoire stable.
+     *
+     * Chaque vidéo reçoit une clé `MD5(id:seed)` : pour une graine donnée,
+     * l'ordre est une permutation aléatoire mais déterministe du catalogue.
+     * La pagination est au curseur sur cette clé (keyset) : aucune vidéo
+     * dupliquée ni sautée pendant le scroll, même si le catalogue bouge —
+     * une nouvelle publication s'insère simplement à une position aléatoire.
+     * Le client change de graine pour obtenir un nouvel ordre (nouveau cycle).
+     */
+    private function seededFeed(Request $request, ?AppUser $user, int $seed, int $limit)
+    {
+        $query = Video::with('author')
+            ->where('status', Video::STATUS_PUBLISHED)
+            ->orderByRaw("MD5(CONCAT(id, ':', ?)) ASC", [$seed])
+            ->orderBy('id');
+
+        $cursor = ApiCursor::decode($request->query('cursor'));
+        if ($cursor !== null && is_scalar($cursor['h'] ?? null)) {
+            $query->whereRaw("MD5(CONCAT(id, ':', ?)) > ?", [$seed, (string) $cursor['h']]);
+        }
+
+        $videos = $query->limit($limit + 1)->get();
+        $hasMore = $videos->count() > $limit;
+        $videos = $videos->take($limit);
+
+        $this->attachViewerState($videos, $user);
+
+        $last = $videos->last();
+
+        return response()->json([
+            'data' => VideoResource::collection($videos),
+            'next_cursor' => $hasMore && $last
+                ? ApiCursor::encode(['h' => md5($last->id . ':' . $seed)])
                 : null,
         ]);
     }

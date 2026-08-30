@@ -5,7 +5,12 @@ namespace App\Http\Controllers;
 use App\Jobs\ImportVideoJob;
 use App\Models\AppUser;
 use App\Models\Video;
+use App\Models\VideoComment;
+use App\Models\VideoLike;
+use App\Support\AvatarFile;
+use App\Support\MediaStorage;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
 /**
@@ -120,12 +125,21 @@ class VideoModerationController extends Controller
             'username' => ['required', 'string', 'regex:/^[a-z0-9_.]{3,30}$/', 'unique:app_users,username'],
             'display_name' => ['required', 'string', 'min:2', 'max:50'],
             'password' => ['required', 'string', 'min:6'],
+            // Même traitement que depuis l'app : carré 600x600, JPEG.
+            'avatar' => array_merge(['nullable'], AvatarFile::RULES),
         ], [
             'username.regex' => 'Pseudo invalide : 3 à 30 caractères, lettres minuscules, chiffres, « . » ou « _ ».',
             'username.unique' => 'Ce pseudo est déjà pris.',
+            'avatar.image' => 'L\'avatar doit être une image (jpg, png ou webp).',
+            'avatar.max' => 'L\'avatar ne doit pas dépasser 5 Mo.',
         ]);
 
+        unset($validated['avatar']);
         $appUser = AppUser::create($validated);
+
+        if ($request->hasFile('avatar')) {
+            $appUser->update(['avatar_path' => AvatarFile::store($request->file('avatar'))]);
+        }
         if ($request->boolean('is_certified')) {
             $appUser->update(['is_certified' => true]);
         }
@@ -142,6 +156,101 @@ class VideoModerationController extends Controller
         $appUser->tokens()->delete();
 
         return redirect()->back()->with('success', "Mot de passe de @{$appUser->username} mis à jour.");
+    }
+
+    /**
+     * POST /app-users/{appUser}/avatar — remplace l'avatar d'un compte.
+     * Même traitement que depuis l'application (carré 600x600, JPEG).
+     */
+    public function updateAppUserAvatar(Request $request, AppUser $appUser)
+    {
+        $request->validate([
+            'avatar' => array_merge(['required'], AvatarFile::RULES),
+        ], [
+            'avatar.image' => "L'avatar doit être une image (jpg, png ou webp).",
+            'avatar.max' => "L'avatar ne doit pas dépasser 5 Mo.",
+        ]);
+
+        $appUser->update([
+            'avatar_path' => AvatarFile::replace($request->file('avatar'), $appUser->avatar_path),
+        ]);
+
+        return redirect()->back()->with('success', "Avatar de @{$appUser->username} mis à jour.");
+    }
+
+    /**
+     * DELETE /app-users/{appUser} — supprime un compte et tout ce qu'il a
+     * produit.
+     *
+     * Les clés étrangères effacent en cascade les vidéos, likes, commentaires
+     * et abonnements du compte, mais deux choses leur échappent : les
+     * compteurs dénormalisés portés par les AUTRES lignes (une vidéo qu'il
+     * avait likée, un compte qu'il suivait) et les fichiers du disque média.
+     * On recalcule donc les compteurs touchés à partir des lignes réellement
+     * restantes — plus sûr qu'une soustraction, qui dériverait au moindre
+     * enchaînement de cascades.
+     */
+    public function destroyAppUser(AppUser $appUser)
+    {
+        $username = $appUser->username;
+
+        // Relevé AVANT suppression : après, les lignes n'existent plus.
+        $ownedVideos = Video::where('app_user_id', $appUser->id)->pluck('id');
+        $touchedVideos = VideoLike::where('app_user_id', $appUser->id)->pluck('video_id')
+            ->merge(VideoComment::where('app_user_id', $appUser->id)->pluck('video_id'))
+            ->unique()
+            ->diff($ownedVideos);
+        $touchedComments = DB::table('video_comment_likes')
+            ->where('app_user_id', $appUser->id)
+            ->pluck('video_comment_id');
+        $touchedUsers = DB::table('follows')->where('follower_id', $appUser->id)->pluck('followed_id')
+            ->merge(DB::table('follows')->where('followed_id', $appUser->id)->pluck('follower_id'))
+            ->unique();
+        $avatarPath = $appUser->avatar_path;
+
+        DB::transaction(function () use ($appUser, $touchedVideos, $touchedComments, $touchedUsers) {
+            // Polymorphe, donc sans contrainte de clé étrangère : à effacer
+            // explicitement, sinon les jetons survivent au compte.
+            $appUser->tokens()->delete();
+            $appUser->delete();
+
+            // forceFill : les compteurs ne sont pas dans les $fillable des
+            // modèles (ailleurs ils passent par increment/decrement, qui
+            // ignorent la protection). Un update() classique ne les écrirait
+            // pas, sans lever d'erreur.
+            Video::whereIn('id', $touchedVideos)->get()->each(fn (Video $video) => $video->forceFill([
+                'likes_count' => VideoLike::where('video_id', $video->id)->count(),
+                'comments_count' => VideoComment::where('video_id', $video->id)->count(),
+            ])->save());
+
+            VideoComment::whereIn('id', $touchedComments)->get()->each(
+                fn (VideoComment $comment) => $comment->forceFill([
+                    'likes_count' => DB::table('video_comment_likes')
+                        ->where('video_comment_id', $comment->id)
+                        ->count(),
+                ])->save(),
+            );
+
+            AppUser::whereIn('id', $touchedUsers)->get()->each(fn (AppUser $user) => $user->forceFill([
+                'followers_count' => DB::table('follows')->where('followed_id', $user->id)->count(),
+                'following_count' => DB::table('follows')->where('follower_id', $user->id)->count(),
+            ])->save());
+        });
+
+        // Hors transaction : les fichiers ne se rejouent pas en arrière, on ne
+        // les touche qu'une fois la base réellement à jour.
+        foreach ($ownedVideos as $videoId) {
+            MediaStorage::deleteDirectory('videos/' . $videoId);
+            Storage::disk('local')->deleteDirectory('videos-src/' . $videoId);
+        }
+        if ($avatarPath) {
+            MediaStorage::delete($avatarPath);
+        }
+
+        return redirect('/app-users')->with(
+            'success',
+            "Compte @{$username} supprimé, avec ses {$ownedVideos->count()} vidéo(s).",
+        );
     }
 
     /**

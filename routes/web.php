@@ -56,6 +56,10 @@ Route::get('/app-users', [VideoModerationController::class, 'renderAppUsers'])->
 Route::post('/app-users', [VideoModerationController::class, 'createAppUser'])->middleware(EnsureUserIsAdmin::class);
 Route::put('/app-users/{appUser}/certify', [VideoModerationController::class, 'toggleCertified'])->middleware(EnsureUserIsAdmin::class);
 Route::put('/app-users/{appUser}/password', [VideoModerationController::class, 'resetAppUserPassword'])->middleware(EnsureUserIsAdmin::class);
+Route::post('/app-users/{appUser}/avatar', [VideoModerationController::class, 'updateAppUserAvatar'])->middleware(EnsureUserIsAdmin::class);
+// Suppression définitive (compte + vidéos + médias) : super-admin seulement,
+// comme la suppression d'une vidéo.
+Route::delete('/app-users/{appUser}', [VideoModerationController::class, 'destroyAppUser'])->middleware([EnsureUserIsAdmin::class, EnsureUserIsSuperAdmin::class]);
 
 // Securities
 Route::delete('/logout', [SecurityController::class, 'logout'])->name('security.logout');

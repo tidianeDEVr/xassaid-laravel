@@ -7,12 +7,9 @@ use App\Http\Requests\AppLoginRequest;
 use App\Http\Requests\AppRegisterRequest;
 use App\Http\Resources\AppUserResource;
 use App\Models\AppUser;
-use App\Support\MediaOptimizer;
-use App\Support\MediaStorage;
+use App\Support\AvatarFile;
 use Illuminate\Http\Request;
-use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Str;
 
 class AppAuthController extends Controller
 {
@@ -20,7 +17,7 @@ class AppAuthController extends Controller
     {
         $avatarPath = null;
         if ($request->hasFile('avatar')) {
-            $avatarPath = $this->storeAvatar($request->file('avatar'));
+            $avatarPath = AvatarFile::store($request->file('avatar'));
         }
 
         $user = AppUser::create([
@@ -65,19 +62,38 @@ class AppAuthController extends Controller
     public function updateAvatar(Request $request)
     {
         $request->validate([
-            'avatar' => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
+            'avatar' => array_merge(['required'], AvatarFile::RULES),
         ]);
 
         $user = $request->user();
-        $previous = $user->avatar_path;
-
-        $user->update(['avatar_path' => $this->storeAvatar($request->file('avatar'))]);
-
-        if ($previous) {
-            MediaStorage::delete($previous);
-        }
+        $user->update([
+            'avatar_path' => AvatarFile::replace($request->file('avatar'), $user->avatar_path),
+        ]);
 
         return response()->json(['user' => new AppUserResource($user)]);
+    }
+
+    /**
+     * POST /v2/auth/password — change le mot de passe du compte connecté.
+     */
+    public function changePassword(Request $request)
+    {
+        $request->validate([
+            'current_password' => ['required', 'string'],
+            // Mêmes bornes qu'à l'inscription (AppRegisterRequest).
+            'password' => ['required', 'string', 'min:6', 'max:72'],
+        ]);
+
+        $user = $request->user();
+        if (!Hash::check($request->current_password, $user->password)) {
+            return response()->json([
+                'message' => 'Le mot de passe actuel est incorrect.',
+            ], 422);
+        }
+
+        $user->update(['password' => $request->password]);
+
+        return response()->json(['message' => 'Mot de passe modifié.']);
     }
 
     public function logout(Request $request)
@@ -87,21 +103,4 @@ class AppAuthController extends Controller
         return response()->json(['message' => 'Déconnecté.']);
     }
 
-    private function storeAvatar(UploadedFile $file): string
-    {
-        // Carré 600x600 : recadrage centré, l'app l'affiche toujours en rond.
-        $optimized = MediaOptimizer::squareAvatar($file, 600);
-        if ($optimized === null) {
-            abort(422, 'Image illisible.');
-        }
-
-        $filename = 'avatars/' . Str::uuid() . '.' . $optimized['extension'];
-        MediaStorage::put($filename, file_get_contents($optimized['path']));
-
-        if ($optimized['cleanup']) {
-            @unlink($optimized['path']);
-        }
-
-        return $filename;
-    }
 }

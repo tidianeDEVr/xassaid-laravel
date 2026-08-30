@@ -21,11 +21,21 @@ rsync:
 		--exclude ".env" \
 		./ $(REMOTE_USER)@$(REMOTE_HOST):$(REMOTE_PATH)
 
+# Le volume `.:/var/www/html` recouvre TOUT /var/www/html par le dossier de
+# l'hôte — vendor/ et storage/ de l'image compris. Deux conséquences, que ces
+# deux commandes rattrapent après chaque build :
+#   - le composer install du Dockerfile ne sert à rien au runtime, c'est le
+#     vendor/ du VPS qui est chargé (et le rsync l'exclut) ;
+#   - le chown du Dockerfile non plus, donc Apache (www-data) ne peut pas
+#     réécrire les vues compilées et les pages dont le template vient de
+#     changer tombent en 500.
 deploy:
 	ssh -i $(SSH_KEY) $(REMOTE_USER)@$(REMOTE_HOST) "\
 		cd $(REMOTE_PATH) && \
 		docker compose down && \
-		docker compose up -d --build \
+		docker compose up -d --build && \
+		docker compose exec -T web composer install --no-interaction --optimize-autoloader && \
+		docker compose exec -T web chown -R www-data:www-data storage bootstrap/cache \
 	"
 
 # Serveur de dev local.

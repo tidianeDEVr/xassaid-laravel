@@ -49,6 +49,7 @@ Route::prefix('v2')->group(function () {
     Route::post('/auth/login', [AppAuthController::class, 'login'])->middleware('throttle:app-login');
     Route::middleware('auth:sanctum')->group(function () {
         Route::get('/auth/me', [AppAuthController::class, 'me']);
+        Route::post('/auth/password', [AppAuthController::class, 'changePassword'])->middleware('throttle:app-login');
         Route::post('/auth/logout', [AppAuthController::class, 'logout']);
         Route::post('/me/avatar', [AppAuthController::class, 'updateAvatar'])->middleware('throttle:app-avatar');
 
