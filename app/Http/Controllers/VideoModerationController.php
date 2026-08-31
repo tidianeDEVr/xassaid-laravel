@@ -29,7 +29,7 @@ class VideoModerationController extends Controller
             Video::STATUS_FAILED,
             Video::STATUS_PROCESSING,
         ];
-        if (!in_array($status, $allowed, true)) {
+        if (! in_array($status, $allowed, true)) {
             $status = Video::STATUS_PENDING_REVIEW;
         }
 
@@ -92,8 +92,8 @@ class VideoModerationController extends Controller
             }
         }
 
-        \App\Support\MediaStorage::deleteDirectory('videos/' . $video->id);
-        Storage::disk('local')->deleteDirectory('videos-src/' . $video->id);
+        \App\Support\MediaStorage::deleteDirectory('videos/'.$video->id);
+        Storage::disk('local')->deleteDirectory('videos-src/'.$video->id);
         $video->delete();
 
         return redirect()->back()->with('success', 'Vidéo supprimée.');
@@ -108,7 +108,9 @@ class VideoModerationController extends Controller
 
     public function toggleCertified(AppUser $appUser)
     {
-        $appUser->update(['is_certified' => !$appUser->is_certified]);
+        // forceFill : is_certified est volontairement hors des $fillable
+        // (personne ne doit pouvoir se certifier via l'API mobile).
+        $appUser->forceFill(['is_certified' => ! $appUser->is_certified])->save();
 
         return redirect()->back()->with(
             'success',
@@ -141,7 +143,7 @@ class VideoModerationController extends Controller
             $appUser->update(['avatar_path' => AvatarFile::store($request->file('avatar'))]);
         }
         if ($request->boolean('is_certified')) {
-            $appUser->update(['is_certified' => true]);
+            $appUser->forceFill(['is_certified' => true])->save();
         }
 
         return redirect()->back()->with('success', "Compte @{$appUser->username} créé.");
@@ -240,8 +242,8 @@ class VideoModerationController extends Controller
         // Hors transaction : les fichiers ne se rejouent pas en arrière, on ne
         // les touche qu'une fois la base réellement à jour.
         foreach ($ownedVideos as $videoId) {
-            MediaStorage::deleteDirectory('videos/' . $videoId);
-            Storage::disk('local')->deleteDirectory('videos-src/' . $videoId);
+            MediaStorage::deleteDirectory('videos/'.$videoId);
+            Storage::disk('local')->deleteDirectory('videos-src/'.$videoId);
         }
         if ($avatarPath) {
             MediaStorage::delete($avatarPath);
@@ -275,19 +277,53 @@ class VideoModerationController extends Controller
             return redirect()->back()->with('error', 'Aucun lien valide (un lien http par ligne).');
         }
 
-        foreach ($links as $link) {
+        foreach ($links->values() as $i => $link) {
             $video = Video::create([
                 'app_user_id' => (int) $request->app_user_id,
                 // Remplacée par le titre de la vidéo une fois téléchargée.
                 'description' => mb_substr($link, 0, 2000),
                 'status' => Video::STATUS_PROCESSING,
+                // Conservé pour pouvoir relancer un import en échec.
+                'source_url' => mb_substr($link, 0, 500),
             ]);
-            ImportVideoJob::dispatch($video->id, $link);
+            // Étalés de 2 minutes : des téléchargements enchaînés depuis la
+            // même IP re-déclenchent la vérification anti-bot de YouTube,
+            // cookies ou pas.
+            ImportVideoJob::dispatch($video->id, $link)
+                ->delay(now()->addSeconds($i * 120));
         }
 
         return redirect('/videos?status=processing')->with(
             'success',
-            $links->count() . ' import(s) lancé(s) — le téléchargement et le transcodage tournent en arrière-plan.',
+            $links->count().' import(s) lancé(s), espacés de 2 minutes pour ne pas déclencher l\'anti-bot de YouTube — le téléchargement et le transcodage tournent en arrière-plan.',
+        );
+    }
+
+    /**
+     * POST /videos/{video}/retry — relance un import en échec.
+     *
+     * Ne concerne que les vidéos importées par lien (source_url connu) : pour
+     * un upload depuis l'application, l'original est supprimé à l'échec et il
+     * n'y a rien à rejouer.
+     */
+    public function retryImport(Video $video)
+    {
+        if ($video->status !== Video::STATUS_FAILED) {
+            return redirect()->back()->with('error', 'Cette vidéo n\'est pas en échec.');
+        }
+        if (! $video->source_url) {
+            return redirect()->back()->with('error', 'Pas de lien d\'origine pour cette vidéo : impossible de relancer.');
+        }
+
+        $video->update([
+            'status' => Video::STATUS_PROCESSING,
+            'rejected_reason' => null,
+        ]);
+        ImportVideoJob::dispatch($video->id, $video->source_url);
+
+        return redirect('/videos?status=processing')->with(
+            'success',
+            'Import relancé — suivez l\'avancement dans l\'onglet « En traitement ».',
         );
     }
 }

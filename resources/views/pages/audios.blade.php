@@ -11,6 +11,9 @@
                 <a href="/categories/audios" class="btn btn-outline-dark">
                     Catégories d'audios
                 </a>
+                <button type="button" class="btn btn-outline-dark" data-bs-toggle="modal" data-bs-target="#audioImportModal">
+                    <i class="ri-download-cloud-2-line"></i> Importer depuis des liens
+                </button>
                 <button type="button" class="btn btn-dark" data-bs-toggle="modal" data-bs-target="#audioModal">
                     Ajouter un nouveau fichier
                 </button>
@@ -91,6 +94,71 @@
             </div>
         </div>
 
+        @if (isset($imports) && $imports->isNotEmpty())
+            <div class="card mb-4">
+                <div class="card-header d-flex align-items-center gap-2">
+                    <i class="ri-download-cloud-2-line"></i> Imports en cours / en échec
+                    <span class="badge bg-secondary">{{ $imports->count() }}</span>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th>Lien</th>
+                                <th>Catégorie</th>
+                                <th>Statut</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach ($imports as $import)
+                                <tr>
+                                    <td style="max-width: 340px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                                        <a href="{{ $import->source_url }}" target="_blank" rel="noopener">
+                                            {{ $import->source_url }}
+                                        </a>
+                                    </td>
+                                    <td>{{ optional($import->category)->title ?? '—' }}</td>
+                                    <td>
+                                        @if ($import->status === 'failed')
+                                            <span class="badge bg-danger">Échec</span>
+                                            <small class="text-muted d-block">{{ $import->error }}</small>
+                                        @else
+                                            <span class="badge bg-info text-dark">
+                                                <span class="spinner-border spinner-border-sm" role="status" style="width: 10px; height: 10px;"></span>
+                                                En traitement
+                                            </span>
+                                            <small class="text-muted d-block">Rechargez la page pour suivre.</small>
+                                        @endif
+                                    </td>
+                                    <td>
+                                        <div class="d-flex gap-1">
+                                            @if ($import->status === 'failed')
+                                                <form method="post" action="{{ url('/audios/imports/' . $import->id . '/retry') }}">
+                                                    @csrf
+                                                    <button class="btn btn-sm btn-warning" type="submit">
+                                                        <i class="ri-restart-line"></i>
+                                                    </button>
+                                                </form>
+                                            @endif
+                                            <form method="post" action="{{ url('/audios/imports/' . $import->id) }}"
+                                                onsubmit="return confirm('Abandonner cet import ?')">
+                                                @csrf
+                                                @method('delete')
+                                                <button class="btn btn-sm btn-outline-danger" type="submit">
+                                                    <i class="ri-delete-bin-6-line"></i>
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        @endif
+
         <div class="table-responsive">
             <table id="audios" class="table table-bordered" style="width: 100%">
                 <thead>
@@ -139,6 +207,50 @@
                     @endforeach
                 </tbody>
             </table>
+        </div>
+    </div>
+
+    <!-- Import d'audios par liens (YouTube, Instagram...) : la piste audio
+         est convertie en MP3 avant l'upload. -->
+    <div class="modal fade" id="audioImportModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <form method="post" action="{{ url('/audios/import') }}">
+                    @csrf
+                    <div class="modal-header">
+                        <h1 class="modal-title fs-5">Importer des audios depuis des liens</h1>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label for="audioImportCategory" class="form-label"><span
+                                    class="text-danger">*</span>Catégorie</label>
+                            <select class="form-select" name="category_id" id="audioImportCategory" required>
+                                <option selected value="">-- Veuillez choisir une catégorie --</option>
+                                @foreach ($categories as $category)
+                                    <option value="{{ $category->id }}">{{ $category->type }} -
+                                        {{ $category->title }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="mb-1">
+                            <label class="form-label"><span class="text-danger">*</span>Liens (un par ligne, 20 max)</label>
+                            <textarea name="links" class="form-control" rows="6" required
+                                placeholder="https://www.youtube.com/watch?v=…&#10;https://www.instagram.com/reel/…"></textarea>
+                        </div>
+                        <small class="text-muted">
+                            La piste audio de chaque vidéo est téléchargée (yt-dlp), convertie en
+                            MP3 ({{ (int) config('services.xassaid.audio_bitrate', 96) }} kbps)
+                            puis uploadée. Le titre reprend celui de la vidéo. Le traitement tourne
+                            en arrière-plan : les imports apparaissent en haut de cette page.
+                        </small>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                        <button type="submit" class="btn btn-dark">Lancer l'import</button>
+                    </div>
+                </form>
+            </div>
         </div>
     </div>
 
@@ -206,6 +318,13 @@
                 placeholder: '-- Veuillez choisir une catégorie --',
                 width: '100%',
                 dropdownParent: $('#audioEditModal')
+            });
+            $('#audioImportCategory').select2({
+                theme: 'bootstrap-5',
+                language: 'fr',
+                placeholder: '-- Veuillez choisir une catégorie --',
+                width: '100%',
+                dropdownParent: $('#audioImportModal')
             });
         });
         let audioFile = document.querySelector("#audio");

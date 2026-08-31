@@ -35,4 +35,18 @@ return [
         ],
     ],
 
+    // Imports par lien (yt-dlp) : lus via config() et non env() pour rester
+    // corrects quand la config est cachée (php artisan config:cache).
+    'ytdlp' => [
+        'bin' => env('YTDLP_BIN', 'yt-dlp'),
+        'cookies' => env('YTDLP_COOKIES', ''),
+    ],
+
+    // Serveur de fichiers Xassaid (upload des audios/covers).
+    'xassaid' => [
+        'files_uri' => env('XASSAID_FILES_URI'),
+        'upload_key' => env('XASSAID_UPLOAD_KEY'),
+        'audio_bitrate' => (int) env('XASSAID_AUDIO_BITRATE', 96),
+    ],
+
 ];

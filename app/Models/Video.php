@@ -27,6 +27,7 @@ class Video extends Model
         'renditions',
         'published_at',
         'rejected_reason',
+        'source_url',
     ];
 
     protected $attributes = [

@@ -10,6 +10,7 @@ RUN apt-get update && apt-get install -y \
     libwebp-dev \
     libfreetype6-dev \
     zip \
+    unzip \
     vim \
     ffmpeg
 
@@ -19,9 +20,26 @@ RUN apt-get clean && rm -rf /var/lib/apt/lists/*
 # yt-dlp : import de vidéos par lien (YouTube Shorts, Instagram Reels)
 # depuis le back-office. Le binaire autonome `yt-dlp_linux` — l'asset `yt-dlp`
 # est un script qui exige python3, absent de l'image php:8.2-apache.
+# Le ADD ci-dessous re-télécharge les métadonnées de la dernière release à
+# chaque build : il invalide le cache Docker dès qu'une nouvelle version de
+# yt-dlp sort. Sans lui, ce layer resterait en cache pour toujours et le
+# binaire vieillirait — les vieilles versions cassent régulièrement sur
+# YouTube (alors qu'Instagram continue de marcher).
+ADD https://api.github.com/repos/yt-dlp/yt-dlp/releases/latest /tmp/yt-dlp-latest.json
 RUN curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_linux \
     -o /usr/local/bin/yt-dlp && chmod a+rx /usr/local/bin/yt-dlp \
-    && yt-dlp --version
+    && yt-dlp --version && rm -f /tmp/yt-dlp-latest.json
+
+# Deno : runtime JavaScript requis par les yt-dlp récents pour résoudre le
+# « n challenge » de YouTube (voir wiki yt-dlp/EJS). Sans lui, chaque
+# téléchargement YouTube échoue avec « n challenge solving failed » /
+# « The page needs to be reloaded ».
+RUN curl -fsSL https://github.com/denoland/deno/releases/latest/download/deno-x86_64-unknown-linux-gnu.zip \
+    -o /tmp/deno.zip \
+    && unzip -o /tmp/deno.zip -d /usr/local/bin && chmod a+rx /usr/local/bin/deno \
+    && rm -f /tmp/deno.zip && deno --version
+# Cache Deno inscriptible par www-data (le worker n'a pas de HOME utilisable).
+ENV DENO_DIR=/tmp/deno-cache
 
 # Enable Apache mod_rewrite for URL rewriting
 RUN a2enmod rewrite

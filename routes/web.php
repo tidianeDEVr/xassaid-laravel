@@ -20,6 +20,11 @@ Route::get('/analytics/short-audios', [AnalyticsController::class, 'shortAudios'
 
 Route::get('/audios', [AudioController::class, 'renderAudios'])->middleware(EnsureUserIsAdmin::class);
 Route::post('/audios', [AudioController::class, 'createAudio'])->middleware(EnsureUserIsAdmin::class);
+// Import d'audios par lien (yt-dlp -> MP3). Déclaré avant /audios/{audio}
+// pour que « import(s) » ne soit jamais capturé comme paramètre de route.
+Route::post('/audios/import', [AudioController::class, 'importAudios'])->middleware(EnsureUserIsAdmin::class);
+Route::post('/audios/imports/{import}/retry', [AudioController::class, 'retryAudioImport'])->middleware(EnsureUserIsAdmin::class);
+Route::delete('/audios/imports/{import}', [AudioController::class, 'destroyAudioImport'])->middleware(EnsureUserIsAdmin::class);
 Route::put('/audios/{audio}', [AudioController::class, 'updateAudio'])->middleware(EnsureUserIsAdmin::class);
 Route::delete('/audios/{audio}', [AudioController::class, 'deleteAudio'])->middleware([EnsureUserIsAdmin::class, EnsureUserIsSuperAdmin::class]);
 
@@ -52,6 +57,7 @@ Route::post('/videos/{video}/approve', [VideoModerationController::class, 'appro
 Route::post('/videos/{video}/reject', [VideoModerationController::class, 'reject'])->middleware(EnsureUserIsAdmin::class);
 Route::delete('/videos/{video}', [VideoModerationController::class, 'destroy'])->middleware([EnsureUserIsAdmin::class, EnsureUserIsSuperAdmin::class]);
 Route::post('/videos/import', [VideoModerationController::class, 'importVideos'])->middleware(EnsureUserIsAdmin::class);
+Route::post('/videos/{video}/retry', [VideoModerationController::class, 'retryImport'])->middleware(EnsureUserIsAdmin::class);
 Route::get('/app-users', [VideoModerationController::class, 'renderAppUsers'])->middleware(EnsureUserIsAdmin::class);
 Route::post('/app-users', [VideoModerationController::class, 'createAppUser'])->middleware(EnsureUserIsAdmin::class);
 Route::put('/app-users/{appUser}/certify', [VideoModerationController::class, 'toggleCertified'])->middleware(EnsureUserIsAdmin::class);

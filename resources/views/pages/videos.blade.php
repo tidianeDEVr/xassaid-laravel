@@ -112,6 +112,15 @@
                     <i class="ri-play-circle-line"></i>
                   </button>
                 @endif
+                @if ($video->status === 'failed' && $video->source_url)
+                  <form method="post" action="{{ url('/videos/' . $video->id . '/retry') }}">
+                    @csrf
+                    <button class="btn btn-sm btn-warning" type="submit"
+                      onclick="return confirm('Relancer l\'import de cette vidéo ?')">
+                      <i class="ri-restart-line"></i>
+                    </button>
+                  </form>
+                @endif
                 @if ($video->status === 'pending_review')
                   <form method="post" action="{{ url('/videos/' . $video->id . '/approve') }}">
                     @csrf
