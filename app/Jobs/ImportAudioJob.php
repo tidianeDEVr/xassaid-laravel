@@ -3,7 +3,9 @@
 namespace App\Jobs;
 
 use App\Models\Audio;
+use App\Models\AudioCategory;
 use App\Models\AudioImport;
+use App\Support\Slugger;
 use App\Support\YtDlp;
 use App\Support\YtDlpException;
 use Illuminate\Bus\Queueable;
@@ -99,7 +101,7 @@ class ImportAudioJob implements ShouldQueue
 
         Audio::create([
             'title' => $title,
-            'slug' => $this->generateSlug($title, $name),
+            'slug' => Slugger::forAudio($title, AudioCategory::where('id', $import->category_id)->value('slug'), null, $name),
             'pathToFile' => $uploadFilename,
             'category_id' => $import->category_id,
         ]);
@@ -130,12 +132,4 @@ class ImportAudioJob implements ShouldQueue
         Storage::disk('local')->deleteDirectory('audio-imports/'.$import->id);
     }
 
-    /** Même logique que Controller::generateSlug, avec repli sur le nom horodaté. */
-    private function generateSlug(string $title, string $fallback): string
-    {
-        $slug = strtolower(preg_replace('/[^A-Za-z0-9-]+/', '-', $title));
-        $slug = trim(preg_replace('/-+/', '-', $slug), '-');
-
-        return $slug !== '' ? $slug : $fallback;
-    }
 }

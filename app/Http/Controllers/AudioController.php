@@ -8,6 +8,7 @@ use App\Http\Requests\AudioRequest;
 use App\Http\Requests\AudioUpdateRequest;
 use App\Jobs\ImportAudioJob;
 use App\Models\Audio;
+use App\Support\Slugger;
 use App\Models\AudioCategory;
 use App\Models\AudioImport;
 use App\Support\MediaOptimizer;
@@ -127,7 +128,7 @@ class AudioController extends Controller
     {
         $data = $request->validated();
         $category = new AudioCategory($data);
-        $category->slug = $this->generateSlug($category->title);
+        $category->slug = Slugger::unique($category->title, 'audio_categories');
         if ($request->hasFile('coverImage')) {
             $image = $request->file('coverImage');
             if (! $image->isValid()) {
@@ -135,7 +136,9 @@ class AudioController extends Controller
             }
             $baseName = MediaOptimizer::normalizeFilename(pathinfo($image->getClientOriginalName(), PATHINFO_FILENAME));
             $name = $baseName !== '' ? $baseName.'-'.time() : (string) time();
-            $optimized = MediaOptimizer::optimizeImage($image, 1200, 1200, 82);
+            // Image de catégorie : carré 400x400 en WebP (léger, net sur mobile)
+            $optimized = MediaOptimizer::squareWebp($image, 400, 85)
+                ?? MediaOptimizer::optimizeImage($image, 1200, 1200, 82);
             $uploadFilename = $name.'.'.$optimized['extension'];
 
             // UPLOAD FILE
@@ -167,7 +170,9 @@ class AudioController extends Controller
     {
         $data = $request->validated();
         $audio = new Audio($data);
-        $audio->slug = $this->generateSlug($audio->title);
+        $category = AudioCategory::where('slug', $data['category'])->first();
+        // slug « titre-catégorie » par défaut (une page par audio, sans doublon)
+        $audio->slug = Slugger::forAudio($audio->title, $category?->slug);
         if ($request->hasFile('audio')) {
             $audioFile = $request->file('audio');
             if (! $audioFile->isValid()) {
@@ -246,12 +251,15 @@ class AudioController extends Controller
     public function updateAudio(AudioUpdateRequest $request, Audio $audio)
     {
         $data = $request->validated();
-        $audio->title = $data['title'];
-        $audio->slug = $this->generateSlug($audio->title);
-
         $category = AudioCategory::where('slug', $data['category'])->first();
         if (! $category) {
             return redirect()->back()->withErrors(['error' => 'Catégorie introuvable.']);
+        }
+        $titleChanged = $audio->title !== $data['title'];
+        $audio->title = $data['title'];
+        // On ne change l'URL que si le titre change ou si le slug actuel est en conflit
+        if ($titleChanged || $audio->slug === '' || Slugger::exists('audios', $audio->slug, $audio->id)) {
+            $audio->slug = Slugger::forAudio($audio->title, $category->slug, $audio->id);
         }
         $audio->category_id = $category->id;
 
@@ -304,7 +312,9 @@ class AudioController extends Controller
         $data = $request->validated();
         $category->title = $data['title'];
         $category->type = $data['type'];
-        $category->slug = $this->generateSlug($category->title);
+        if ($category->isDirty('title') || Slugger::exists('audio_categories', $category->slug, $category->id)) {
+            $category->slug = Slugger::unique($category->title, 'audio_categories', $category->id);
+        }
 
         if ($request->hasFile('coverImage')) {
             $image = $request->file('coverImage');
@@ -313,7 +323,9 @@ class AudioController extends Controller
             }
             $baseName = MediaOptimizer::normalizeFilename(pathinfo($image->getClientOriginalName(), PATHINFO_FILENAME));
             $name = $baseName !== '' ? $baseName.'-'.time() : (string) time();
-            $optimized = MediaOptimizer::optimizeImage($image, 1200, 1200, 82);
+            // Image de catégorie : carré 400x400 en WebP (léger, net sur mobile)
+            $optimized = MediaOptimizer::squareWebp($image, 400, 85)
+                ?? MediaOptimizer::optimizeImage($image, 1200, 1200, 82);
             $uploadFilename = $name.'.'.$optimized['extension'];
 
             $endpoint = config('services.xassaid.files_uri').'/upload.php';
@@ -423,7 +435,7 @@ class AudioController extends Controller
 
     public function frontAudiosbyCategory($category)
     {
-        $category = AudioCategory::where('slug', $category)->first();
+        $category = AudioCategory::findBySlugOrRedirect($category);
 
         if (! $category) {
             return response()->json([
@@ -441,7 +453,8 @@ class AudioController extends Controller
 
     public function getAudioBySlug($slug)
     {
-        $audio = Audio::where('slug', $slug)->with('category')->first();
+        // ancien slug (renommage) : on renvoie l'audio actuel, le front redirige en 301
+        $audio = Audio::findBySlugOrRedirect($slug, ['category']);
 
         if (! $audio) {
             return response()->json([

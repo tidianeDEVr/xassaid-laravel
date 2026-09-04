@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Requests\ArticleRequest;
 use App\Http\Requests\ArticleUpdateRequest;
 use App\Models\Article;
+use App\Support\Slugger;
 use App\Support\MediaOptimizer;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
@@ -36,7 +37,7 @@ class ArticleController extends Controller
         $validated = $request->validated();
         unset($validated['image']);
         $article = new Article($validated);
-        $article->slug = Str::slug($article->title);
+        $article->slug = Slugger::unique($article->title, 'articles');
         $image = $request->file('image');
 
         if ($request->hasFile('image') && $image->isValid()) {
@@ -79,7 +80,9 @@ class ArticleController extends Controller
         $validated = $request->validated();
         unset($validated['image']);
         $article->fill($validated);
-        $article->slug = Str::slug($article->title);
+        if ($article->isDirty('title') || ! $article->slug || Slugger::exists('articles', $article->slug, $article->id)) {
+            $article->slug = Slugger::unique($article->title, 'articles', $article->id);
+        }
 
         if ($request->hasFile('image')) {
             $image = $request->file('image');
@@ -142,7 +145,7 @@ class ArticleController extends Controller
 
     public function getArticleBySlug($slug)
     {
-        $article = Article::where('slug', $slug)->first();
+        $article = Article::findBySlugOrRedirect($slug);
 
         if (! $article) {
             return response('Article not found!', 404);

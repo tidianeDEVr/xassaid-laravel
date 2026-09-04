@@ -157,6 +157,48 @@ class MediaOptimizer
     /**
      * @return array{path: string, extension: string, cleanup: bool, error: ?string}
      */
+    /**
+     * Carré {$size}x{$size} en WebP (recadrage centré). null si l'image est
+     * illisible ou si GD n'a pas le WebP : l'appelant garde alors son repli.
+     *
+     * @return array{path: string, extension: string, cleanup: bool}|null
+     */
+    public static function squareWebp(UploadedFile $file, int $size = 400, int $quality = 85): ?array
+    {
+        if (! function_exists('imagewebp') || ! function_exists('imagecreatetruecolor')) {
+            return null;
+        }
+        $path = $file->getPathname();
+        $info = @getimagesize($path);
+        if (! $info) {
+            return null;
+        }
+        [$width, $height, $type] = $info;
+        $source = match ($type) {
+            IMAGETYPE_JPEG => function_exists('imagecreatefromjpeg') ? @imagecreatefromjpeg($path) : null,
+            IMAGETYPE_PNG => function_exists('imagecreatefrompng') ? @imagecreatefrompng($path) : null,
+            IMAGETYPE_WEBP => function_exists('imagecreatefromwebp') ? @imagecreatefromwebp($path) : null,
+            IMAGETYPE_GIF => function_exists('imagecreatefromgif') ? @imagecreatefromgif($path) : null,
+            default => null,
+        };
+        if (! $source) {
+            return null;
+        }
+        $side = min($width, $height);
+        $srcX = (int) floor(($width - $side) / 2);
+        $srcY = (int) floor(($height - $side) / 2);
+        $dest = imagecreatetruecolor($size, $size);
+        // fond sombre pour les PNG transparents (couleur du site)
+        imagefill($dest, 0, 0, imagecolorallocate($dest, 24, 24, 27));
+        imagecopyresampled($dest, $source, 0, 0, $srcX, $srcY, $size, $size, $side, $side);
+        $tmpPath = tempnam(sys_get_temp_dir(), 'img_');
+        imagewebp($dest, $tmpPath, $quality);
+        imagedestroy($dest);
+        imagedestroy($source);
+
+        return ['path' => $tmpPath, 'extension' => 'webp', 'cleanup' => true];
+    }
+
     public static function optimizeAudio(UploadedFile $file, int $bitrateKbps = 96): array
     {
         $path = $file->getPathname();

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Requests\FileCreateRequest;
 use App\Http\Requests\FileUpdateRequest;
 use App\Models\File;
+use App\Support\Slugger;
 use App\Support\MediaOptimizer;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
@@ -30,7 +31,7 @@ class FileController extends Controller
         $data = $request->validated();
         $file = new File;
         $file->title = $data['title'];
-        $file->slug = $this->generateSlug($file->title);
+        $file->slug = Slugger::unique($file->title, 'files');
 
         $uploaded = $request->file('file');
         if (! $uploaded || ! $uploaded->isValid()) {
@@ -93,7 +94,7 @@ class FileController extends Controller
 
     public function getFileBySlug($slug)
     {
-        $file = File::where('slug', $slug)->first();
+        $file = File::findBySlugOrRedirect($slug);
 
         if (! $file) {
             return response('File not found!', 404);
@@ -106,7 +107,10 @@ class FileController extends Controller
     {
         $data = $request->validated();
         $file->title = $data['title'];
-        $file->slug = $data['slug'] ?: $this->generateSlug($file->title);
+        $wanted = $data['slug'] ?: $file->title;
+        if (Slugger::base($wanted) !== $file->slug) {
+            $file->slug = Slugger::unique($wanted, 'files', $file->id);
+        }
         $file->save();
 
         return redirect()->back()->with('success', 'Le fichier a été modifié !');
