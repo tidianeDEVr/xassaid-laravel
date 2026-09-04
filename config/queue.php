@@ -39,7 +39,13 @@ return [
             'connection' => env('DB_QUEUE_CONNECTION'),
             'table' => env('DB_QUEUE_TABLE', 'jobs'),
             'queue' => env('DB_QUEUE', 'default'),
-            'retry_after' => (int) env('DB_QUEUE_RETRY_AFTER', 90),
+            // Doit dépasser le plus long timeout de job (TranscodeVideoJob et
+            // ImportAudioJob : 1200 s), sinon un job encore en cours serait
+            // considéré comme perdu et redonné à un second worker — double
+            // transcodage, compteurs incrémentés deux fois. Avec l'unique
+            // worker actuel le risque est latent, mais il deviendrait réel au
+            // premier `queue:work` lancé en parallèle (debug, scaling).
+            'retry_after' => (int) env('DB_QUEUE_RETRY_AFTER', 1260),
             'after_commit' => false,
         ],
 

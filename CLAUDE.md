@@ -71,7 +71,7 @@ All content models use slug-based URLs. The `generateSlug()` method is in the ba
 - `/` - Dashboard
 - `/audios`, `/articles`, `/library`, `/users` - CRUD pages
 - `/categories/audios` - Audio category management
-- `/analytics` - Analytics dashboard
+- `/file-health` - Santé des fichiers (scan des médias manquants, doublons, audios courts) — super-admin
 
 **API Routes** (`/api/v1`, public):
 - `/homepage` - Frontend homepage data
@@ -98,3 +98,12 @@ The project uses PHP 8.2 with Apache, includes FFmpeg for audio processing. Port
 docker-compose up -d          # Start containers
 docker-compose logs -f        # View logs
 ```
+
+## Backoffice layout & YouTube section (2026-09)
+
+- No CSS framework: the back-office uses its own stylesheet and vanilla JS in `public/backoffice/app.css` / `app.js` (no Bootstrap, jQuery, DataTables or select2). Components: `.card`, `.table.stack` (stacks into cards under 720px, cells need `data-label`), `.btn*`, `.field/.input/.select`, `.badge`, `.flash`, `.tabs`, `.toolbar`, `<x-modal>` (native `<dialog>`, opened with `data-open="#id"`; the trigger can carry `data-action` and `data-set-<field>` to prefill the form), `select[data-search]` (searchable combobox, `data-group` on options for a prefix), `form[data-upload]` (XHR upload with progress), partials `partials.flash` and `partials.pagination`.
+- Lists are paginated server-side (`paginate()->withQueryString()`) with a `q` search parameter; render them with `$items->links('partials.pagination')`.
+- Access: every page requires `ROLE_ADMIN`; the Communauté (videos, app users), Publication (YouTube) and Administration (users, file health) sections are restricted to the super admin (`User::isSuperAdmin()`, enforced by `EnsureUserIsSuperAdmin`) and hidden from the menu for other admins.
+- Layout: `resources/views/base.blade.php` (sidebar grouped menu, `partials/sidebar-nav.blade.php`). Menu entries are declared in the `$menu` array of the layout; add new pages there with an "active" pattern for `request()->is()`.
+- Dashboard: `OverviewController@dashboard` → `pages/overview.blade.php` (counters, YouTube publication card, audios by type, "à corriger", recent audios/articles).
+- YouTube publication tracking: `/youtube` (`YoutubeAutomationController`, `App\Support\YoutubeAutomation`) relays the JSON API of the `../xassaid-automation` service configured with `YOUTUBE_AUTOMATION_URL` / `YOUTUBE_AUTOMATION_TOKEN` (`config/services.php`). The Laravel container reaches the host service via `host.docker.internal` (extra_hosts in docker-compose).

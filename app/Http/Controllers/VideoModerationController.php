@@ -33,10 +33,17 @@ class VideoModerationController extends Controller
             $status = Video::STATUS_PENDING_REVIEW;
         }
 
+        $q = trim((string) $request->query('q', ''));
         $videos = Video::with('author')
             ->where('status', $status)
+            ->when($q !== '', fn ($query) => $query->where(function ($w) use ($q) {
+                $w->where('description', 'like', "%{$q}%")
+                    ->orWhere('khassida_title', 'like', "%{$q}%")
+                    ->orWhereHas('author', fn ($a) => $a->where('username', 'like', "%{$q}%")->orWhere('display_name', 'like', "%{$q}%"));
+            }))
             ->orderByDesc('created_at')
-            ->get();
+            ->paginate(20)
+            ->withQueryString();
 
         $counts = Video::selectRaw('status, count(*) as total')
             ->groupBy('status')
@@ -46,6 +53,7 @@ class VideoModerationController extends Controller
             'videos' => $videos,
             'status' => $status,
             'counts' => $counts,
+            'q' => $q,
             'appUsers' => AppUser::orderBy('username')->get(),
         ]);
     }
@@ -99,11 +107,18 @@ class VideoModerationController extends Controller
         return redirect()->back()->with('success', 'Vidéo supprimée.');
     }
 
-    public function renderAppUsers()
+    public function renderAppUsers(Request $request)
     {
-        $appUsers = AppUser::orderByDesc('created_at')->get();
+        $q = trim((string) $request->query('q', ''));
+        $appUsers = AppUser::query()
+            ->when($q !== '', fn ($query) => $query->where(function ($w) use ($q) {
+                $w->where('username', 'like', "%{$q}%")->orWhere('display_name', 'like', "%{$q}%");
+            }))
+            ->orderByDesc('created_at')
+            ->paginate(25)
+            ->withQueryString();
 
-        return view('pages.app_users', ['appUsers' => $appUsers]);
+        return view('pages.app_users', ['appUsers' => $appUsers, 'q' => $q]);
     }
 
     public function toggleCertified(AppUser $appUser)

@@ -38,6 +38,10 @@ class YtDlp
         // de cookies (format Netscape, exporté d'un navigateur connecté) lève
         // le blocage. Optionnel : YTDLP_COOKIES=/chemin/cookies.txt dans .env.
         $cookies = (string) config('services.ytdlp.cookies', '');
+        $proxy = (string) config('services.ytdlp.proxy', '');
+        // Générateur de PO tokens (bgutil) : lève le blocage anti-bot que
+        // YouTube impose aux IP de datacenter.
+        $potProvider = (string) config('services.ytdlp.pot_provider', '');
 
         $process = new Process([
             self::bin(),
@@ -45,6 +49,10 @@ class YtDlp
             '--no-simulate',
             '--max-filesize', '500M',
             ...($cookies !== '' && is_file($cookies) ? ['--cookies', $cookies] : []),
+            ...($proxy !== '' ? ['--proxy', $proxy] : []),
+            ...($potProvider !== ''
+                ? ['--extractor-args', 'youtubepot-bgutilhttp:base_url=' . $potProvider]
+                : []),
             ...($audioOnly
                 // Meilleure piste audio, extraite et convertie en MP3 au
                 // bitrate de l'app (même valeur que l'upload manuel).

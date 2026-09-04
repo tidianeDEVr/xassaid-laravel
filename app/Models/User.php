@@ -32,13 +32,27 @@ class User extends Authenticatable
         'remember_token',
     ];
 
+    /**
+     * Super administrateur : seul compte autorisé à gérer les admins, la
+     * communauté (vidéos, comptes app), la publication YouTube et la
+     * maintenance des fichiers.
+     */
+    public const SUPER_ADMIN_EMAIL = 'cheikhtiindiaye@gmail.com';
+
+    public function isSuperAdmin(): bool
+    {
+        return $this->email === self::SUPER_ADMIN_EMAIL;
+    }
+
     public function hasRole($role)
     {
         $rolesArray = $this->roles->pluck('libelle')->toArray();
+
         return in_array($role, $rolesArray);
     }
 
     protected $with = ['roles'];
+
     /**
      * Get the attributes that should be cast.
      *

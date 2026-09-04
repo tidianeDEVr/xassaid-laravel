@@ -1,6 +1,6 @@
 <?php
 
-use App\Http\Controllers\AnalyticsController;
+use App\Http\Controllers\FileHealthController;
 use App\Http\Controllers\AudioController;
 use App\Http\Controllers\FileController;
 use App\Http\Controllers\OverviewController;
@@ -8,15 +8,20 @@ use App\Http\Controllers\ArticleController;
 use App\Http\Controllers\SecurityController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\VideoModerationController;
+use App\Http\Controllers\YoutubeAutomationController;
 use App\Http\Middleware\EnsureUserIsAdmin;
 use App\Http\Middleware\EnsureUserIsSuperAdmin;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', [OverviewController::class, 'dashboard'])->name('dashboard')->middleware(EnsureUserIsAdmin::class);
-Route::get('/analytics', [AnalyticsController::class, 'render'])->middleware([EnsureUserIsAdmin::class, EnsureUserIsSuperAdmin::class]);
-Route::get('/analytics/check', [AnalyticsController::class, 'check'])->middleware([EnsureUserIsAdmin::class, EnsureUserIsSuperAdmin::class]);
-Route::get('/analytics/duplicates', [AnalyticsController::class, 'duplicates'])->middleware([EnsureUserIsAdmin::class, EnsureUserIsSuperAdmin::class]);
-Route::get('/analytics/short-audios', [AnalyticsController::class, 'shortAudios'])->middleware([EnsureUserIsAdmin::class, EnsureUserIsSuperAdmin::class]);
+// Santé des fichiers (ex-« Analytics ») : vérification par lots des médias
+// distants, doublons et audios trop courts. Super-admin seulement.
+Route::prefix('/file-health')->middleware([EnsureUserIsAdmin::class, EnsureUserIsSuperAdmin::class])->group(function () {
+    Route::get('/', [FileHealthController::class, 'render'])->name('file-health.index');
+    Route::get('/check', [FileHealthController::class, 'check']);
+    Route::get('/duplicates', [FileHealthController::class, 'duplicates']);
+    Route::get('/short-audios', [FileHealthController::class, 'shortAudios']);
+});
 
 Route::get('/audios', [AudioController::class, 'renderAudios'])->middleware(EnsureUserIsAdmin::class);
 Route::post('/audios', [AudioController::class, 'createAudio'])->middleware(EnsureUserIsAdmin::class);
@@ -51,7 +56,9 @@ Route::prefix('/categories')->group(function () {
     Route::delete('/audios/{category}', [AudioController::class, 'deleteCategory'])->middleware([EnsureUserIsAdmin::class, EnsureUserIsSuperAdmin::class]);
 });
 
-// Modération du feed vidéo
+// Modération du feed vidéo et comptes de l'application (Communauté) :
+// réservés au super-admin, comme la publication YouTube.
+Route::middleware(EnsureUserIsSuperAdmin::class)->group(function () {
 Route::get('/videos', [VideoModerationController::class, 'renderVideos'])->middleware(EnsureUserIsAdmin::class);
 Route::post('/videos/{video}/approve', [VideoModerationController::class, 'approve'])->middleware(EnsureUserIsAdmin::class);
 Route::post('/videos/{video}/reject', [VideoModerationController::class, 'reject'])->middleware(EnsureUserIsAdmin::class);
@@ -66,9 +73,26 @@ Route::post('/app-users/{appUser}/avatar', [VideoModerationController::class, 'u
 // Suppression définitive (compte + vidéos + médias) : super-admin seulement,
 // comme la suppression d'une vidéo.
 Route::delete('/app-users/{appUser}', [VideoModerationController::class, 'destroyAppUser'])->middleware([EnsureUserIsAdmin::class, EnsureUserIsSuperAdmin::class]);
+});
+
+// Publication YouTube (relais vers le service xassaid-automation)
+Route::prefix('/youtube')->middleware([EnsureUserIsAdmin::class, EnsureUserIsSuperAdmin::class])->group(function () {
+    Route::get('/', [YoutubeAutomationController::class, 'render'])->name('youtube.index');
+    Route::get('/api/status', [YoutubeAutomationController::class, 'status'])->name('youtube.status');
+    Route::get('/api/categories', [YoutubeAutomationController::class, 'categories'])->name('youtube.categories');
+    Route::get('/api/audios', [YoutubeAutomationController::class, 'audios'])->name('youtube.audios');
+    Route::get('/api/events', [YoutubeAutomationController::class, 'events'])->name('youtube.events');
+    Route::post('/api/{action}', [YoutubeAutomationController::class, 'action'])
+        ->where('action', 'pause|resume|sync')->name('youtube.action');
+    Route::post('/api/audios/{audio}/{action}', [YoutubeAutomationController::class, 'audioAction'])
+        ->where(['audio' => '[0-9]+', 'action' => 'retry|skip|priority'])->name('youtube.audioAction');
+});
 
 // Securities
 Route::delete('/logout', [SecurityController::class, 'logout'])->name('security.logout');
 
 Route::get('/login', [SecurityController::class, 'login'])->name('security.login');
 Route::post('/login', [SecurityController::class, 'doLogin']);
+
+
+

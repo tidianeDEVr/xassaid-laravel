@@ -1,8 +1,9 @@
 @extends('base')
 
+@section('title', 'Vidéos')
+
 @section('content')
 @php
-    $canManageAdmins = auth()->check() && auth()->user()->email === 'cheikhtiindiaye@gmail.com';
     $tabs = [
         'pending_review' => 'En attente',
         'published' => 'Publiées',
@@ -10,273 +11,170 @@
         'failed' => 'Échecs',
         'processing' => 'En traitement',
     ];
+    $withReason = in_array($status, ['rejected', 'failed'], true);
 @endphp
-<div class="container py-4">
-    <div class="d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between mb-3 gap-2">
-      <h1>Vidéos</h1>
-      <button type="button" class="btn btn-dark" data-bs-toggle="modal" data-bs-target="#importModal">
-        <i class="ri-download-cloud-2-line"></i> Importer des vidéos
-      </button>
+<div class="page page-wide">
+    <div class="page-head">
+        <div>
+            <h1>Vidéos</h1>
+            <div class="sub">Modération du feed vidéo de l'application.</div>
+        </div>
+        <div class="actions">
+            <button type="button" class="btn btn-primary" data-open="#importModal"><i class="ri-download-cloud-2-line"></i> Importer des vidéos</button>
+        </div>
     </div>
-    @if (session('success'))
-    <div class="alert alert-success">{{ session('success') }}</div>
-    @endif
-    @if (session('error'))
-    <div class="alert alert-danger">{{ session('error') }}</div>
-    @endif
-    @if ($errors->any())
-    <div class="alert alert-danger">
-        <ul class="mb-0">
-            @foreach ($errors->all() as $error)
-                <li>{{ $error }}</li>
+
+    @include('partials.flash')
+
+    <div class="tabs">
+        @foreach ($tabs as $key => $label)
+            <a class="{{ $status === $key ? 'active' : '' }}" href="{{ url('/videos?status=' . $key) }}">{{ $label }} <span class="n">{{ $counts[$key] ?? 0 }}</span></a>
+        @endforeach
+    </div>
+
+    <div class="card">
+        <form class="toolbar" method="get" action="/videos">
+            <input type="hidden" name="status" value="{{ $status }}">
+            <div class="search grow" style="max-width:360px"><i class="ri-search-line"></i><input class="input" type="search" name="q" value="{{ $q }}" placeholder="Description, khassida ou auteur…"></div>
+            <button class="btn" type="submit">Rechercher</button>
+            @if ($q !== '')
+                <a class="btn btn-ghost" href="/videos?status={{ $status }}">Réinitialiser</a>
+            @endif
+        </form>
+        <div class="table-wrap">
+            <table class="table stack">
+                <thead>
+                    <tr>
+                        <th class="idx">#</th><th>Aperçu</th><th>Auteur</th><th>Description</th><th>Durée</th><th>Reçue le</th>
+                        @if ($withReason)<th>Motif</th>@endif
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @forelse ($videos as $video)
+                        <tr>
+                            <td class="idx">{{ $videos->firstItem() + $loop->index }}</td>
+                            <td data-label="Aperçu">
+                                @if ($video->poster_path)
+                                    <img class="thumb tall" src="{{ $video->posterUrl() }}" alt="" />
+                                @else
+                                    <span class="thumb-empty"><i class="ri-video-line"></i></span>
+                                @endif
+                            </td>
+                            <td data-label="Auteur">
+                                <div class="title">{{ $video->author?->display_name ?? '?' }}
+                                    @if ($video->author?->is_certified)<i class="ri-verified-badge-fill" style="color:var(--accent)" title="Certifié"></i>@endif
+                                </div>
+                                <div class="slug">{{ '@' . ($video->author?->username ?? '?') }}</div>
+                            </td>
+                            <td data-label="Description" style="max-width: 360px;">
+                                {{ \Illuminate\Support\Str::limit($video->description, 120) }}
+                                @if ($video->khassida_title)<div class="small muted">Khassida : {{ $video->khassida_title }}</div>@endif
+                            </td>
+                            <td data-label="Durée" class="nowrap">
+                                {{ $video->duration_ms ? gmdate($video->duration_ms >= 3600000 ? 'G:i:s' : 'i:s', (int) round($video->duration_ms / 1000)) : '—' }}
+                            </td>
+                            <td data-label="Reçue le" class="muted small nowrap">{{ $video->created_at->format('d/m/Y H:i') }}</td>
+                            @if ($withReason)<td data-label="Motif" class="small">{{ $video->rejected_reason ?? '—' }}</td>@endif
+                            <td class="actions-cell">
+                                <div class="btn-group">
+                                    @if ($video->download_path || $video->hls_path)
+                                        <button class="btn btn-sm btn-icon" title="Lire" data-open="#videoPreviewModal"
+                                            data-src="{{ $video->downloadUrl() ?? $video->hlsUrl() }}" data-kind="{{ $video->download_path ? 'mp4' : 'hls' }}"
+                                            data-modal-title="{{ $video->author?->display_name }} — {{ \Illuminate\Support\Str::limit($video->description, 60) }}"><i class="ri-play-circle-line"></i></button>
+                                    @endif
+                                    @if ($video->status === 'failed' && $video->source_url)
+                                        <form class="inline" method="post" action="{{ url('/videos/' . $video->id . '/retry') }}" onsubmit="return confirm('Relancer l\'import de cette vidéo ?')">
+                                            @csrf
+                                            <button class="btn btn-sm" type="submit"><i class="ri-restart-line"></i> Relancer</button>
+                                        </form>
+                                    @endif
+                                    @if ($video->status === 'pending_review')
+                                        <form class="inline" method="post" action="{{ url('/videos/' . $video->id . '/approve') }}" onsubmit="return confirm('Publier cette vidéo ?')">
+                                            @csrf
+                                            <button class="btn btn-sm btn-accent" type="submit"><i class="ri-check-line"></i> Publier</button>
+                                        </form>
+                                        <button class="btn btn-sm btn-danger" data-open="#videoRejectModal" data-action="/videos/{{ $video->id }}/reject"><i class="ri-close-line"></i> Rejeter</button>
+                                    @endif
+                                    <form class="inline" method="post" action="{{ url('/videos/' . $video->id) }}" onsubmit="return confirm('Supprimer définitivement cette vidéo et ses fichiers ?')">
+                                        @csrf @method('delete')
+                                        <button class="btn btn-sm btn-danger btn-icon" type="submit" title="Supprimer"><i class="ri-delete-bin-6-line"></i></button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                    @empty
+                        <tr class="empty-row"><td colspan="{{ $withReason ? 8 : 7 }}">Aucune vidéo dans cet onglet.</td></tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+        {{ $videos->links('partials.pagination') }}
+    </div>
+</div>
+
+<x-modal id="videoPreviewModal" title="Aperçu">
+    <div class="modal-body dark" style="margin:-18px"><video id="videoPreviewPlayer" controls playsinline></video></div>
+</x-modal>
+
+<x-modal id="videoRejectModal" title="Rejeter la vidéo" size="sm" form="">
+    <div class="field">
+        <label class="req" for="rejectReason">Motif du rejet</label>
+        <input type="text" required maxlength="255" name="reason" class="input" id="rejectReason" placeholder="Contenu inapproprié, qualité insuffisante…" />
+        <div class="help">Le motif est visible par l'auteur dans l'application.</div>
+    </div>
+    <x-slot:footer>
+        <button type="button" class="btn" data-close>Annuler</button>
+        <button type="submit" class="btn btn-danger solid">Rejeter</button>
+    </x-slot:footer>
+</x-modal>
+
+<x-modal id="importModal" title="Importer des vidéos" size="lg" form="" action="{{ url('/videos/import') }}">
+    <div class="field">
+        <label class="req" for="importAccount">Publier sur le compte</label>
+        <select name="app_user_id" id="importAccount" class="select" required data-search data-placeholder="Choisir un compte">
+            <option value="">Choisir un compte</option>
+            @foreach ($appUsers as $appUser)
+                <option value="{{ $appUser->id }}" data-group="{{ '@' . $appUser->username }}">{{ $appUser->display_name }}</option>
             @endforeach
-        </ul>
+        </select>
     </div>
-    @endif
-
-    <ul class="nav nav-tabs mb-3">
-      @foreach ($tabs as $key => $label)
-        <li class="nav-item">
-          <a class="nav-link {{ $status === $key ? 'active' : '' }}" href="{{ url('/videos?status=' . $key) }}">
-            {{ $label }}
-            <span class="badge {{ $status === $key ? 'bg-dark' : 'bg-secondary' }}">{{ $counts[$key] ?? 0 }}</span>
-          </a>
-        </li>
-      @endforeach
-    </ul>
-
-    <div class="table-responsive">
-      <table id="videosTable" class="table table-bordered align-middle" style="width: 100%">
-        <thead>
-          <tr>
-            <th>N*</th>
-            <th>Aperçu</th>
-            <th>Auteur</th>
-            <th>Description</th>
-            <th>Durée</th>
-            <th>Reçue le</th>
-            @if ($status === 'rejected' || $status === 'failed')
-              <th>Motif</th>
-            @endif
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          @foreach ($videos as $index => $video)
-          <tr>
-            <td>{{ $index + 1 }}</td>
-            <td>
-              @if ($video->poster_path)
-                <img src="{{ $video->posterUrl() }}" alt="poster"
-                     style="width: 54px; height: 96px; object-fit: cover; border-radius: 6px;" />
-              @else
-                <span class="text-muted">—</span>
-              @endif
-            </td>
-            <td>
-              {{ $video->author?->display_name ?? '?' }}<br />
-              <small class="text-muted">
-                {{ '@' . ($video->author?->username ?? '?') }}
-                @if ($video->author?->is_certified)
-                  <i class="ri-verified-badge-fill text-success" title="Certifié"></i>
-                @endif
-              </small>
-            </td>
-            <td style="max-width: 320px;">
-              {{ \Illuminate\Support\Str::limit($video->description, 120) }}
-              @if ($video->khassida_title)
-                <br /><small class="text-muted">Khassida : {{ $video->khassida_title }}</small>
-              @endif
-            </td>
-            <td>
-              @if ($video->duration_ms)
-                {{ gmdate($video->duration_ms >= 3600000 ? 'G:i:s' : 'i:s', (int) round($video->duration_ms / 1000)) }}
-              @else
-                —
-              @endif
-            </td>
-            <td>{{ $video->created_at->format('d/m/Y H:i') }}</td>
-            @if ($status === 'rejected' || $status === 'failed')
-              <td>{{ $video->rejected_reason ?? '—' }}</td>
-            @endif
-            <td>
-              <div class="d-flex gap-2">
-                @if ($video->download_path || $video->hls_path)
-                  {{-- Aperçu : MP4 en priorité (lecture native, pas de CORS),
-                       HLS en repli pour les vidéos sans download.mp4. --}}
-                  <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal"
-                    data-bs-target="#videoPreviewModal"
-                    data-src="{{ $video->downloadUrl() ?? $video->hlsUrl() }}"
-                    data-kind="{{ $video->download_path ? 'mp4' : 'hls' }}"
-                    data-title="{{ $video->author?->display_name }} — {{ \Illuminate\Support\Str::limit($video->description, 60) }}">
-                    <i class="ri-play-circle-line"></i>
-                  </button>
-                @endif
-                @if ($video->status === 'failed' && $video->source_url)
-                  <form method="post" action="{{ url('/videos/' . $video->id . '/retry') }}">
-                    @csrf
-                    <button class="btn btn-sm btn-warning" type="submit"
-                      onclick="return confirm('Relancer l\'import de cette vidéo ?')">
-                      <i class="ri-restart-line"></i>
-                    </button>
-                  </form>
-                @endif
-                @if ($video->status === 'pending_review')
-                  <form method="post" action="{{ url('/videos/' . $video->id . '/approve') }}">
-                    @csrf
-                    <button class="btn btn-sm btn-success" type="submit"
-                      onclick="return confirm('Publier cette vidéo ?')">
-                      <i class="ri-check-line"></i> Publier
-                    </button>
-                  </form>
-                  <button class="btn btn-sm btn-outline-danger" data-bs-toggle="modal"
-                    data-bs-target="#videoRejectModal" data-id="{{ $video->id }}">
-                    <i class="ri-close-line"></i> Rejeter
-                  </button>
-                @endif
-                @if ($canManageAdmins)
-                  <form method="post" action="{{ url('/videos/' . $video->id) }}"
-                    onsubmit="return confirm('Supprimer définitivement cette vidéo et ses fichiers ?')">
-                    @csrf
-                    @method('delete')
-                    <button class="btn btn-sm btn-outline-danger" type="submit">
-                      <i class="ri-delete-bin-6-line"></i>
-                    </button>
-                  </form>
-                @endif
-              </div>
-            </td>
-          </tr>
-          @endforeach
-        </tbody>
-      </table>
+    <div class="field">
+        <label class="req" for="importLinks">Liens (un par ligne, 20 max)</label>
+        <textarea name="links" id="importLinks" class="textarea" rows="6" required placeholder="https://www.youtube.com/shorts/…&#10;https://www.instagram.com/reel/…"></textarea>
+        <div class="help">Chaque lien est téléchargé, transcodé en trois qualités puis publié directement. La description reprend le titre de la vidéo. L'avancement est visible dans l'onglet « En traitement ».</div>
     </div>
-</div>
+    <x-slot:footer>
+        <button type="button" class="btn" data-close>Annuler</button>
+        <button type="submit" class="btn btn-primary">Lancer l'import</button>
+    </x-slot:footer>
+</x-modal>
+@endsection
 
-<div class="modal fade" id="videoPreviewModal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h1 class="modal-title fs-6" id="videoPreviewTitle">Aperçu</h1>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-      <div class="modal-body text-center bg-black">
-        <video id="videoPreviewPlayer" controls playsinline
-               style="max-width: 100%; max-height: 70vh;"></video>
-      </div>
-    </div>
-  </div>
-</div>
-
-<div class="modal fade" id="videoRejectModal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <form method="post" id="videoRejectForm">
-        @csrf
-        <div class="modal-header">
-          <h1 class="modal-title fs-6">Rejeter la vidéo</h1>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-        </div>
-        <div class="modal-body">
-          <label for="rejectReason" class="form-label"><span class="text-danger">*</span>Motif du rejet</label>
-          <input type="text" required maxlength="255" name="reason" class="form-control" id="rejectReason"
-                 placeholder="Contenu inapproprié, qualité insuffisante..." />
-          <small class="text-muted">Le motif sera visible par l'auteur dans l'application.</small>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
-          <button type="submit" class="btn btn-danger">Rejeter</button>
-        </div>
-      </form>
-    </div>
-  </div>
-</div>
-
+@section('scripts')
 <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.15/dist/hls.min.js"></script>
-<script defer>
-    $(document).ready(function () {
-      $("#videosTable").DataTable({ order: [] });
-    });
-
+<script>
     // Aperçu : MP4 en lecture native (cas normal) ; HLS en repli —
     // natif sur Safari, hls.js ailleurs.
     const previewModal = document.getElementById('videoPreviewModal');
     const previewPlayer = document.getElementById('videoPreviewPlayer');
     let hlsInstance = null;
-
-    if (previewModal) {
-      previewModal.addEventListener('show.bs.modal', function (event) {
-        const src = event.relatedTarget.getAttribute('data-src');
-        const kind = event.relatedTarget.getAttribute('data-kind') || 'hls';
-        document.getElementById('videoPreviewTitle').textContent =
-          event.relatedTarget.getAttribute('data-title') || 'Aperçu';
-
-        if (kind === 'mp4') {
-          previewPlayer.src = src;
-        } else if (previewPlayer.canPlayType('application/vnd.apple.mpegurl')) {
-          previewPlayer.src = src;
+    previewModal.addEventListener('modal:open', (event) => {
+        const t = event.detail.trigger;
+        const src = t.dataset.src, kind = t.dataset.kind || 'hls';
+        if (kind === 'mp4' || previewPlayer.canPlayType('application/vnd.apple.mpegurl')) {
+            previewPlayer.src = src;
         } else if (window.Hls && Hls.isSupported()) {
-          hlsInstance = new Hls();
-          hlsInstance.loadSource(src);
-          hlsInstance.attachMedia(previewPlayer);
+            hlsInstance = new Hls();
+            hlsInstance.loadSource(src);
+            hlsInstance.attachMedia(previewPlayer);
         }
-      });
-      previewModal.addEventListener('hidden.bs.modal', function () {
+    });
+    previewModal.addEventListener('modal:close', () => {
         previewPlayer.pause();
         previewPlayer.removeAttribute('src');
         previewPlayer.load();
         if (hlsInstance) { hlsInstance.destroy(); hlsInstance = null; }
-      });
-    }
-
-    const rejectModal = document.getElementById('videoRejectModal');
-    if (rejectModal) {
-      rejectModal.addEventListener('show.bs.modal', function (event) {
-        const id = event.relatedTarget.getAttribute('data-id');
-        document.getElementById('videoRejectForm').action = `/videos/${id}/reject`;
-      });
-    }
+    });
 </script>
-
-<!-- Import de vidéos par liens (YouTube Shorts, Instagram Reels...) -->
-<div class="modal fade" id="importModal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-lg">
-    <div class="modal-content">
-      <form method="post" action="{{ url('/videos/import') }}">
-        @csrf
-        <div class="modal-header">
-          <h1 class="modal-title fs-5">Importer des vidéos</h1>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-        </div>
-        <div class="modal-body">
-          <div class="mb-3">
-            <label class="form-label"><span class="text-danger">*</span>Publier sur le compte</label>
-            <select name="app_user_id" class="form-select" required>
-              <option value="" disabled selected>Choisir un compte…</option>
-              @foreach ($appUsers as $appUser)
-                <option value="{{ $appUser->id }}">
-                  {{ '@' . $appUser->username }} — {{ $appUser->display_name }}
-                </option>
-              @endforeach
-            </select>
-          </div>
-          <div class="mb-1">
-            <label class="form-label"><span class="text-danger">*</span>Liens (un par ligne, 20 max)</label>
-            <textarea name="links" class="form-control" rows="6" required
-              placeholder="https://www.youtube.com/shorts/…&#10;https://www.instagram.com/reel/…"></textarea>
-          </div>
-          <small class="text-muted">
-            Chaque lien est téléchargé (yt-dlp), transcodé en 3 qualités puis
-            publié directement. La description reprend le titre de la vidéo.
-            Suivez l'avancement dans l'onglet « En traitement ».
-          </small>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
-          <button type="submit" class="btn btn-dark">Lancer l'import</button>
-        </div>
-      </form>
-    </div>
-  </div>
-</div>
 @endsection

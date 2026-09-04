@@ -11,6 +11,10 @@ services:
             - "8000:80"
         volumes:
             - .:/var/www/html
+        # Permet d'atteindre le service xassaid-automation publié sur l'hôte
+        # (YOUTUBE_AUTOMATION_URL=http://host.docker.internal:8080).
+        extra_hosts:
+            - "host.docker.internal:host-gateway"
         restart: always
 
     # Worker de queue : transcodage vidéo (TranscodeVideoJob).
@@ -25,3 +29,14 @@ services:
         restart: always
         depends_on:
             - web
+            - potprovider
+
+    # Générateur de PO tokens (Proof of Origin) pour yt-dlp : YouTube exige
+    # ces jetons des IP de datacenter, sans quoi il bloque en « anti-bot ».
+    # Interrogé par le plugin bgutil (installé dans l'image, voir Dockerfile)
+    # via YTDLP_POT_PROVIDER=http://potprovider:4416 dans le .env.
+    # Port interne au réseau compose, rien d'exposé sur l'hôte.
+    potprovider:
+        image: brainicism/bgutil-ytdlp-pot-provider
+        container_name: laravel_potprovider
+        restart: always

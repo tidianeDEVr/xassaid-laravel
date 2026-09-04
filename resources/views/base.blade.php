@@ -4,91 +4,87 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Xassaid | Tableau de bord</title>
+    <title>Xassaid | @yield('title', 'Backoffice')</title>
     <link rel="icon" type="image/x-icon" href="{{ asset('favicon.png') }}" />
     <meta name="robots" content="noindex" />
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet"
-        integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
-
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/5.1.3/css/bootstrap.min.css"
-        rel="stylesheet" />
-
-    <link href="https://cdn.datatables.net/1.12.1/css/dataTables.bootstrap5.min.css" rel="stylesheet" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/remixicon@4.3.0/fonts/remixicon.min.css" />
-    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
-    <link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css"
-        rel="stylesheet" />
+    <link rel="stylesheet" href="{{ asset('backoffice/app.css') }}?v={{ filemtime(public_path('backoffice/app.css')) }}">
     @yield('styles')
-    <script src="https://code.jquery.com/jquery-3.5.1.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"
-        integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI" crossorigin="anonymous">
-    </script>
-    <script src="https://cdn.datatables.net/1.12.1/js/jquery.dataTables.min.js"></script>
-    <script src="https://cdn.datatables.net/1.12.1/js/dataTables.bootstrap5.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/i18n/fr.js"></script>
 </head>
 
-<body class="bg-light">
+<body>
     @php
-        $canManageAdmins = auth()->check() && auth()->user()->email === 'cheikhtiindiaye@gmail.com';
+        $user = auth()->user();
+        $isSuperAdmin = $user?->isSuperAdmin() ?? false;
+        // Menu : groupe => [libellé, chemin, icône, motif « actif »]
+        $menu = [
+            'Général' => [
+                ['Tableau de bord', '/', 'ri-dashboard-line', '/'],
+            ],
+            'Contenu' => [
+                ['Audios', '/audios', 'ri-folder-music-line', 'audios*'],
+                ['Catégories d\'audios', '/categories/audios', 'ri-price-tag-3-line', 'categories/*'],
+                ['Articles', '/articles', 'ri-news-line', 'articles*'],
+                ['Bibliothèque', '/library', 'ri-file-pdf-2-line', 'library*'],
+            ],
+        ];
+        if ($isSuperAdmin) {
+            $menu['Communauté'] = [
+                ['Vidéos', '/videos', 'ri-video-line', 'videos*'],
+                ['Comptes app', '/app-users', 'ri-user-3-line', 'app-users*'],
+            ];
+            if (config('services.youtube_automation.url')) {
+                $menu['Publication'] = [['YouTube', '/youtube', 'ri-youtube-line', 'youtube*']];
+            }
+            $menu['Administration'] = [
+                ['Utilisateurs', '/users', 'ri-shield-user-line', 'users*'],
+                ['Santé des fichiers', '/file-health', 'ri-heart-pulse-line', 'file-health*'],
+            ];
+        }
+        $isActive = fn (string $pattern) => $pattern === '/' ? request()->is('/') : request()->is($pattern);
     @endphp
-    <nav class="navbar navbar-expand-lg navbar-light bg-light border-bottom">
-        <div class="container">
-            <a class="navbar-brand" href="/">
-                <img src="{{ asset('xassaid_dark.png') }}" alt="xassaid logo" width="130"></a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNavbar"
-                aria-controls="mainNavbar" aria-expanded="false" aria-label="Toggle navigation">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="mainNavbar">
-                <ul class="navbar-nav ms-auto mb-2 mb-lg-0">
-                    <li class="nav-item">
-                        <a class="nav-link" href="/">Tableau de bord</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="/audios">Audios</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="/articles">Articles</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="/library">Bibliothèque</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="/videos">Vidéos</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="/app-users">Comptes app</a>
-                    </li>
-                    @if ($canManageAdmins)
-                        <li class="nav-item">
-                            <a class="nav-link" href="/users">Utilisateurs</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="/analytics">Analytics</a>
-                        </li>
-                    @endif
-                    @auth
-                        <li class="nav-item">
-                            <form action="{{ route('security.logout') }}" method="POST" class="m-0 p-0">
-                                @method('delete')
-                                @csrf
-                                <button type="submit" class="btn nav-link">Déconnexion</button>
-                            </form>
-                        </li>
-                    @endauth
-                </ul>
-            </div>
+
+    <div class="shell">
+        @auth
+            <aside class="sidebar" id="sidebar">
+                <div class="brand">
+                    <a href="/"><img src="{{ asset('logo-xassaid.png') }}" alt="Xassaid"></a>
+                    <span class="brand-tag">backoffice</span>
+                </div>
+                @include('partials.sidebar-nav', ['menu' => $menu, 'isActive' => $isActive])
+                <div class="user-box">
+                    <div class="email">{{ $user->email }}</div>
+                    <div class="role">{{ $isSuperAdmin ? 'Super administrateur' : 'Administrateur' }}</div>
+                    <form action="{{ route('security.logout') }}" method="POST">
+                        @method('delete')
+                        @csrf
+                        <button type="submit" class="btn btn-ghost btn-sm"><i class="ri-logout-box-r-line"></i> Se déconnecter</button>
+                    </form>
+                </div>
+            </aside>
+            <div class="drawer-backdrop"></div>
+        @endauth
+
+        <div class="main">
+            @auth
+                <div class="topbar">
+                    <a href="/"><img src="{{ asset('logo-xassaid.png') }}" alt="Xassaid"></a>
+                    <button class="btn btn-sm" type="button" data-drawer-toggle aria-controls="sidebar"><i class="ri-menu-line"></i> Menu</button>
+                </div>
+            @endauth
+
+            <main class="content">
+                @yield('content')
+            </main>
+            <footer class="footer">Djeureudjeuf Cheikh Ahmadou Bamba © Xassaid</footer>
         </div>
-    </nav>
-    @yield('content')
-    <footer class="position-fixed bottom-0 vw-100 opacity-50">
-        <p class="text-center text-muted">
-            Djeureudjeuf Cheikh Ahmadou Bamba © Xassaid
-        </p>
-    </footer>
+    </div>
+    <script src="{{ asset('backoffice/app.js') }}?v={{ filemtime(public_path('backoffice/app.js')) }}"></script>
     @yield('scripts')
 </body>
 

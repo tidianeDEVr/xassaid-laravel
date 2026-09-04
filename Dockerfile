@@ -41,6 +41,17 @@ RUN curl -fsSL https://github.com/denoland/deno/releases/latest/download/deno-x8
 # Cache Deno inscriptible par www-data (le worker n'a pas de HOME utilisable).
 ENV DENO_DIR=/tmp/deno-cache
 
+# Plugin bgutil pour yt-dlp : fournit les jetons « Proof of Origin » (PO
+# tokens) que YouTube exige des IP de datacenter. Le plugin interroge le
+# service `potprovider` du docker-compose (voir YTDLP_POT_PROVIDER dans le
+# .env). /etc/yt-dlp/plugins est un des dossiers de plugins système que le
+# binaire yt-dlp charge automatiquement.
+ADD https://api.github.com/repos/Brainicism/bgutil-ytdlp-pot-provider/releases/latest /tmp/bgutil-latest.json
+RUN mkdir -p /etc/yt-dlp/plugins \
+    && curl -L https://github.com/Brainicism/bgutil-ytdlp-pot-provider/releases/latest/download/bgutil-ytdlp-pot-provider.zip \
+    -o /etc/yt-dlp/plugins/bgutil-ytdlp-pot-provider.zip \
+    && rm -f /tmp/bgutil-latest.json
+
 # Enable Apache mod_rewrite for URL rewriting
 RUN a2enmod rewrite
 

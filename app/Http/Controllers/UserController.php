@@ -6,20 +6,29 @@ use App\Http\Requests\UserRequest;
 use App\Http\Requests\UserUpdateRequest;
 use App\Models\Role;
 use App\Models\User;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 
 class UserController extends Controller
 {
-    public function renderUsers()
+    public function renderUsers(Request $request)
     {
-        $users = User::all();
-        return view('pages.users', ['users' => $users]);
+        $q = trim((string) $request->query('q', ''));
+        $users = User::query()
+            ->when($q !== '', fn ($query) => $query->where(function ($w) use ($q) {
+                $w->where('name', 'like', "%{$q}%")->orWhere('email', 'like', "%{$q}%");
+            }))
+            ->orderBy('name')
+            ->paginate(25)
+            ->withQueryString();
+
+        return view('pages.users', ['users' => $users, 'q' => $q]);
     }
 
     public function createAdmin(UserRequest $request)
     {
-        if (!$this->canManageAdmins()) {
+        if (! $this->canManageAdmins()) {
             return redirect()->back()->withErrors(['error' => 'Action non autorisée.']);
         }
 
@@ -50,7 +59,7 @@ class UserController extends Controller
         $user->name = $data['name'];
         $user->email = $data['email'];
 
-        if (!empty($data['password'])) {
+        if (! empty($data['password'])) {
             $user->password = Hash::make($data['password']);
         }
 
@@ -61,7 +70,7 @@ class UserController extends Controller
 
     public function deleteUser(User $user)
     {
-        if (!$this->canManageAdmins()) {
+        if (! $this->canManageAdmins()) {
             return redirect()->back()->withErrors(['error' => 'Action non autorisée.']);
         }
 
@@ -79,13 +88,14 @@ class UserController extends Controller
     {
         $firstname = $data['firstname'];
         $lastname = $data['lastname'];
-        return ucwords(strtolower($firstname)) . ' ' . strtoupper($lastname);
+
+        return ucwords(strtolower($firstname)).' '.strtoupper($lastname);
     }
 
     private function canManageAdmins(): bool
     {
         $user = Auth::user();
 
-        return $user && $user->email === 'cheikhtiindiaye@gmail.com';
+        return $user && $user->isSuperAdmin();
     }
 }

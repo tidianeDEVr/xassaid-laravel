@@ -17,7 +17,7 @@ class EnsureUserIsSuperAdmin
     {
         $user = $request->user();
 
-        if (!$user || $user->email !== 'cheikhtiindiaye@gmail.com') {
+        if (! $user || ! $user->isSuperAdmin()) {
             abort(403, 'Accès non autorisé');
         }
 

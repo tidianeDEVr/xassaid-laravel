@@ -8,14 +8,14 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Symfony\Component\Process\Process;
 
-class AnalyticsController extends Controller
+class FileHealthController extends Controller
 {
     public function render()
     {
         $audioBase = $this->getAudioBaseUrl();
         $fileBase = $this->getFileBaseUrl();
 
-        return view('pages.analytics', [
+        return view('pages.file-health', [
             'audioBase' => $audioBase,
             'fileBase' => $fileBase,
         ]);
@@ -27,6 +27,7 @@ class AnalyticsController extends Controller
         $cursor = max((int) $request->query('cursor', 0), 0);
         $limit = (int) $request->query('limit', 30);
         $limit = min(max($limit, 1), 100);
+        @set_time_limit(120);
 
         if ($type === 'audios') {
             $query = Audio::query()->select(['id', 'title', 'pathToFile']);
@@ -53,11 +54,14 @@ class AnalyticsController extends Controller
         $missing = 0;
         $nextCursor = $cursor;
 
+        // Les sondes HTTP sont lancées en parallèle (pool) : un lot de 100
+        // fichiers ne doit pas dépasser le temps d'exécution PHP.
+        $urls = [];
         foreach ($records as $record) {
             $checked++;
             $nextCursor = $record->id;
 
-            if (!$record->pathToFile) {
+            if (! $record->pathToFile) {
                 $missing++;
                 $results[] = [
                     'id' => $record->id,
@@ -66,18 +70,26 @@ class AnalyticsController extends Controller
                     'status' => null,
                     'reason' => 'Fichier manquant dans la base',
                 ];
+
                 continue;
             }
 
-            $url = rtrim($baseUrl, '/') . '/' . ltrim($record->pathToFile, '/');
-            $probe = $this->probeUrl($url);
+            $urls[$record->id] = rtrim($baseUrl, '/').'/'.ltrim($record->pathToFile, '/');
+        }
 
-            if (!$probe['ok']) {
+        $probes = $this->probeMany($urls, $type === 'files');
+
+        foreach ($records as $record) {
+            if (! isset($urls[$record->id])) {
+                continue;
+            }
+            $probe = $probes[$record->id];
+            if (! $probe['ok']) {
                 $missing++;
                 $results[] = [
                     'id' => $record->id,
                     'title' => $record->title,
-                    'url' => $url,
+                    'url' => $urls[$record->id],
                     'status' => $probe['status'],
                     'reason' => $probe['reason'],
                 ];
@@ -101,7 +113,7 @@ class AnalyticsController extends Controller
         $offset = max((int) $request->query('offset', 0), 0);
         $limit = min(max($limit, 1), 200);
 
-        if (!in_array($mode, ['exact', 'similar'], true)) {
+        if (! in_array($mode, ['exact', 'similar'], true)) {
             return response()->json(['message' => 'Mode invalide.'], 422);
         }
 
@@ -125,7 +137,7 @@ class AnalyticsController extends Controller
                     continue;
                 }
 
-                if (!isset($groups[$key])) {
+                if (! isset($groups[$key])) {
                     $groups[$key] = [
                         'count' => 0,
                         'items' => [],
@@ -159,6 +171,7 @@ class AnalyticsController extends Controller
             if ($a['count'] === $b['count']) {
                 return strcmp($a['key'], $b['key']);
             }
+
             return $b['count'] <=> $a['count'];
         });
 
@@ -211,22 +224,25 @@ class AnalyticsController extends Controller
             $checked++;
             $nextCursor = $record->id;
 
-            if (!$record->pathToFile) {
+            if (! $record->pathToFile) {
                 $unknown++;
+
                 continue;
             }
 
-            $url = rtrim($baseUrl, '/') . '/' . ltrim($record->pathToFile, '/');
+            $url = rtrim($baseUrl, '/').'/'.ltrim($record->pathToFile, '/');
             $contentLength = $this->fetchContentLength($url);
 
             if ($maxProbeBytes > 0 && $contentLength !== null && $contentLength > $maxProbeBytes) {
                 $skippedLarge++;
+
                 continue;
             }
 
             $duration = $this->probeDuration($ffprobe, $url);
             if ($duration === null) {
                 $unknown++;
+
                 continue;
             }
 
@@ -253,26 +269,20 @@ class AnalyticsController extends Controller
         ]);
     }
 
+    /**
+     * Les médias sont servis par le serveur de fichiers (XASSAID_FILES_URI,
+     * ex. https://files.xassaid.com) sous /audios/ pour les MP3 et /files/
+     * pour les PDF. On lit la valeur via config() pour rester compatible
+     * avec le cache de configuration en production.
+     */
     private function getAudioBaseUrl(): string
     {
-        $base = (string) env('XASSAID_AUDIO_PUBLIC_URL', '');
-        if ($base === '') {
-            $base = (string) env('XASSAID_FILES_PUBLIC_URL', env('XASSAID_FILES_URI', ''));
-            $base = $this->ensureSuffix($base, '/audios');
-        }
-
-        return rtrim($base, '/');
+        return $this->ensureSuffix((string) config('services.xassaid.files_uri', ''), '/audios');
     }
 
     private function getFileBaseUrl(): string
     {
-        $base = (string) env('XASSAID_FILE_PUBLIC_URL', '');
-        if ($base === '') {
-            $base = (string) env('XASSAID_FILES_PUBLIC_URL', env('XASSAID_FILES_URI', ''));
-            $base = $this->ensureSuffix($base, '/files');
-        }
-
-        return rtrim($base, '/');
+        return $this->ensureSuffix((string) config('services.xassaid.files_uri', ''), '/files');
     }
 
     /**
@@ -293,7 +303,7 @@ class AnalyticsController extends Controller
                 return ['ok' => true, 'status' => $status, 'reason' => 'OK'];
             }
 
-            if (!in_array($status, [400, 403, 405, 501], true)) {
+            if (! in_array($status, [400, 403, 405, 501], true)) {
                 return ['ok' => false, 'status' => $status, 'reason' => 'Réponse HTTP'];
             }
         }
@@ -314,6 +324,88 @@ class AnalyticsController extends Controller
         return ['ok' => false, 'status' => $status, 'reason' => 'Réponse HTTP'];
     }
 
+    /**
+     * Sonde un lot d'URL en parallèle.
+     *
+     * Audios : requête HEAD (repli sur probeUrl() si le serveur la refuse).
+     * PDF : lecture des 2 derniers Ko par requête Range — un 206 prouve que
+     * le fichier existe et son contenu doit se terminer par « %%EOF », sinon
+     * l'upload a été interrompu et le document est illisible même s'il
+     * répond 200.
+     *
+     * @param  array<int, string>  $urls  id => url
+     * @return array<int, array{ok: bool, status: ?int, reason: string}>
+     */
+    private function probeMany(array $urls, bool $pdf): array
+    {
+        if ($urls === []) {
+            return [];
+        }
+
+        // 10 connexions à la fois : au-delà, le serveur de fichiers refuse
+        // une partie des requêtes.
+        $responses = [];
+        foreach (array_chunk($urls, 10, true) as $chunk) {
+            $responses += Http::pool(function (\Illuminate\Http\Client\Pool $pool) use ($chunk, $pdf) {
+                foreach ($chunk as $id => $url) {
+                    $req = $pool->as((string) $id)->timeout(10)->connectTimeout(4);
+                    if ($pdf) {
+                        $req->withHeaders(['Range' => 'bytes=-2048'])->get($url);
+                    } else {
+                        $req->head($url);
+                    }
+                }
+            });
+        }
+
+        $out = [];
+        foreach ($urls as $id => $url) {
+            $response = $responses[(string) $id] ?? null;
+            if (! $response instanceof \Illuminate\Http\Client\Response) {
+                // Seconde tentative isolée avant de conclure à une erreur réseau.
+                try {
+                    $response = $pdf
+                        ? Http::timeout(10)->connectTimeout(4)->withHeaders(['Range' => 'bytes=-2048'])->get($url)
+                        : Http::timeout(10)->connectTimeout(4)->head($url);
+                } catch (\Throwable $e) {
+                    $out[$id] = ['ok' => false, 'status' => null, 'reason' => 'Erreur réseau'];
+
+                    continue;
+                }
+            }
+            $status = $response->status();
+
+            if ($pdf) {
+                if ($status === 206) {
+                    $out[$id] = str_contains($response->body(), '%%EOF')
+                        ? ['ok' => true, 'status' => $status, 'reason' => 'OK']
+                        : ['ok' => false, 'status' => $status, 'reason' => 'PDF tronqué (fin de fichier absente)'];
+                } elseif ($status === 200) {
+                    // Le serveur ignore les Range : le corps entier est là.
+                    $out[$id] = str_contains($response->body(), '%%EOF')
+                        ? ['ok' => true, 'status' => $status, 'reason' => 'OK']
+                        : ['ok' => false, 'status' => $status, 'reason' => 'PDF tronqué (fin de fichier absente)'];
+                } elseif ($status === 416) {
+                    $out[$id] = ['ok' => true, 'status' => $status, 'reason' => 'OK'];
+                } else {
+                    $out[$id] = ['ok' => false, 'status' => $status, 'reason' => 'Réponse HTTP'];
+                }
+
+                continue;
+            }
+
+            if ($this->isOkStatus($status)) {
+                $out[$id] = ['ok' => true, 'status' => $status, 'reason' => 'OK'];
+            } elseif (in_array($status, [400, 403, 405, 501], true)) {
+                $out[$id] = $this->probeUrl($url);
+            } else {
+                $out[$id] = ['ok' => false, 'status' => $status, 'reason' => 'Réponse HTTP'];
+            }
+        }
+
+        return $out;
+    }
+
     private function isOkStatus(int $status): bool
     {
         return $status >= 200 && $status < 400;
@@ -326,12 +418,12 @@ class AnalyticsController extends Controller
             return '';
         }
 
-        $suffix = '/' . ltrim($suffix, '/');
+        $suffix = '/'.ltrim($suffix, '/');
         if (str_ends_with($base, $suffix)) {
             return $base;
         }
 
-        return $base . $suffix;
+        return $base.$suffix;
     }
 
     private function buildFingerprint(string $title, string $mode): string
@@ -351,6 +443,7 @@ class AnalyticsController extends Controller
             }
 
             sort($tokens);
+
             return implode(' ', $tokens);
         }
 
@@ -377,11 +470,11 @@ class AnalyticsController extends Controller
 
     private function buildItemUrl(string $baseUrl, ?string $path): ?string
     {
-        if (!$path || $baseUrl === '') {
+        if (! $path || $baseUrl === '') {
             return null;
         }
 
-        return rtrim($baseUrl, '/') . '/' . ltrim($path, '/');
+        return rtrim($baseUrl, '/').'/'.ltrim($path, '/');
     }
 
     private function resolveFfprobePath(): string
@@ -394,6 +487,7 @@ class AnalyticsController extends Controller
         $ffmpeg = (string) env('FFMPEG_BIN', '');
         if ($ffmpeg !== '') {
             $candidate = str_replace('ffmpeg', 'ffprobe', $ffmpeg);
+
             return is_file($candidate) ? $candidate : '';
         }
 
@@ -420,12 +514,12 @@ class AnalyticsController extends Controller
         $process->setTimeout(15);
         $process->run();
 
-        if (!$process->isSuccessful()) {
+        if (! $process->isSuccessful()) {
             return null;
         }
 
         $output = trim($process->getOutput());
-        if ($output === '' || !is_numeric($output)) {
+        if ($output === '' || ! is_numeric($output)) {
             return null;
         }
 
@@ -445,7 +539,7 @@ class AnalyticsController extends Controller
             $length = $response->header('content-length');
         }
 
-        if ($length === null || $length === '' || !is_numeric($length)) {
+        if ($length === null || $length === '' || ! is_numeric($length)) {
             return null;
         }
 

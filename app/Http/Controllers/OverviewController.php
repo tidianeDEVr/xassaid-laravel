@@ -6,18 +6,50 @@ use App\Models\Audio;
 use App\Models\AudioCategory;
 use App\Models\File;
 use App\Models\Article;
+use App\Models\AppUser;
+use App\Models\Video;
+use App\Support\YoutubeAutomation;
 
 class OverviewController extends Controller
 {
-    public function dashboard()
+    public function dashboard(YoutubeAutomation $youtube)
     {
         $overview = [
-            'audiosCounts' => Audio::all()->count(),
-            'articlesCounts' => Article::all()->count(),
-            'filesCounts' => File::all()->count(),
-            'categoriesCounts' => AudioCategory::all()->count()
+            'audiosCounts' => Audio::count(),
+            'articlesCounts' => Article::count(),
+            'filesCounts' => File::count(),
+            'categoriesCounts' => AudioCategory::count(),
+            'videosPending' => Video::where('status', Video::STATUS_PENDING_REVIEW)->count(),
+            'videosPublished' => Video::where('status', Video::STATUS_PUBLISHED)->count(),
+            'appUsersCounts' => AppUser::count(),
+            'audiosThisMonth' => Audio::where('created_at', '>=', now()->startOfMonth())->count(),
         ];
-        return view('pages/overview', ['overview' => $overview]);
+        $recentAudios = Audio::with('category')->latest()->take(6)->get();
+        $recentArticles = Article::latest()->take(5)->get();
+        $categoriesWithoutCover = AudioCategory::whereNull('coverImagePath')->orWhere('coverImagePath', '')
+            ->orderBy('title')->get();
+        $emptyCategories = AudioCategory::doesntHave('audios')->orderBy('title')->get();
+        $audiosByType = AudioCategory::query()
+            ->selectRaw('audio_categories.type, COUNT(audios.id) AS n')
+            ->leftJoin('audios', 'audios.category_id', '=', 'audio_categories.id')
+            ->groupBy('audio_categories.type')->pluck('n', 'type');
+
+        $youtubeStatus = null;
+        if ($youtube->configured()) {
+            $result = $youtube->get('/api/status');
+            $youtubeStatus = $result['ok'] ? $result['data'] : ['error' => $result['data']['error'] ?? 'Indisponible'];
+        }
+
+        return view('pages/overview', [
+            'overview' => $overview,
+            'recentAudios' => $recentAudios,
+            'recentArticles' => $recentArticles,
+            'categoriesWithoutCover' => $categoriesWithoutCover,
+            'emptyCategories' => $emptyCategories,
+            'audiosByType' => $audiosByType,
+            'youtube' => $youtubeStatus,
+            'youtubeConfigured' => $youtube->configured(),
+        ]);
     }
 
     public function frontHomepage()

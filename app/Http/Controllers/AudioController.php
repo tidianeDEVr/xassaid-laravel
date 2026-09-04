@@ -17,21 +17,43 @@ use Illuminate\Support\Facades\Log;
 
 class AudioController extends Controller
 {
-    public function renderCategories()
+    public function renderCategories(Request $request)
     {
-        $categories = AudioCategory::all();
+        $q = trim((string) $request->query('q', ''));
+        $type = (string) $request->query('type', '');
+        $categories = AudioCategory::query()
+            ->withCount('audios')
+            ->when($q !== '', fn ($query) => $query->where(function ($w) use ($q) {
+                $w->where('title', 'like', "%{$q}%")->orWhere('slug', 'like', "%{$q}%");
+            }))
+            ->when($type !== '', fn ($query) => $query->where('type', $type))
+            ->orderBy('type')->orderBy('title')
+            ->paginate(25)
+            ->withQueryString();
 
-        return view('categories.audios', ['categories' => $categories]);
+        return view('categories.audios', ['categories' => $categories, 'q' => $q, 'type' => $type]);
     }
 
-    public function renderAudios()
+    public function renderAudios(Request $request)
     {
-        $categories = AudioCategory::all();
-        $audios = Audio::all();
+        $q = trim((string) $request->query('q', ''));
+        $categoryId = (int) $request->query('category', 0);
+        $categories = AudioCategory::orderBy('type')->orderBy('title')->get();
+        $audios = Audio::query()
+            ->with('category')
+            ->when($q !== '', fn ($query) => $query->where(function ($w) use ($q) {
+                $w->where('title', 'like', "%{$q}%")->orWhere('slug', 'like', "%{$q}%");
+            }))
+            ->when($categoryId > 0, fn ($query) => $query->where('category_id', $categoryId))
+            ->orderByDesc('id')
+            ->paginate(25)
+            ->withQueryString();
 
         return view('pages.audios', [
             'categories' => $categories,
             'audios' => $audios,
+            'q' => $q,
+            'categoryId' => $categoryId,
             'imports' => AudioImport::with('category')->orderByDesc('id')->get(),
         ]);
     }
@@ -266,9 +288,13 @@ class AudioController extends Controller
         return redirect()->back()->with('success', 'Le fichier audio a été modifié !');
     }
 
-    public function deleteAudio(Audio $audio)
+    public function deleteAudio(Request $request, Audio $audio)
     {
         $audio->delete();
+
+        if ($request->wantsJson()) {
+            return response()->json(['ok' => true]);
+        }
 
         return redirect()->back()->with('success', 'Le fichier audio a été supprimé !');
     }

@@ -1,58 +1,21 @@
 @extends('base')
 
+@section('title', 'Nouvel article')
+
 @section('content')
-<div class="container py-4">
-    <h1 class="mb-4">Création d'un article</h1>
+<div class="page">
+    <div class="page-head">
+        <div>
+            <h1>Nouvel article</h1>
+            <div class="sub"><a href="/articles">← Retour aux articles</a></div>
+        </div>
+    </div>
 
-    @if (session('success'))
-    <div class="alert alert-success">
-        {{ session('success') }}
-    </div>
-    @endif
-    @if ($errors->any())
-    <div class="alert alert-danger">
-        <ul>
-            @foreach ($errors->all() as $error)
-                <li>{{ $error }}</li>
-            @endforeach
-        </ul>
-    </div>
-    @endif
-    
-    <form action="{{url('/articles/create')}}" method="POST" enctype="multipart/form-data">
+    @include('partials.flash')
+
+    <form action="{{ url('/articles/create') }}" method="POST" enctype="multipart/form-data">
         @csrf
-        <div class="mb-3">
-            <label for="title" class="form-label">Titre de l'article<span class="text-danger">*</span></label>
-            <input type="text" class="form-control" id="title" name="title" placeholder="Titre de l'article" required>
-        </div>
-
-        <div class="mb-3">
-            <label for="image" class="form-label">Image de l'article<span class="text-danger">*</span></label>
-            <input type="file" class="form-control" id="image" name="image" accept="image/*" required>
-        </div>
-
-        <div class="mb-3">
-            <label for="seo_keywords" class="form-label">Mots-clés (SEO Keywords)<span class="text-danger">*</span></label>
-            <input type="text" class="form-control" id="seo_keywords" name="seo_keywords" placeholder="mot-clé 1, mot-clé 2, mot-clé 3" required>
-        </div>
-
-        <div class="mb-3">
-            <label for="seo_title" class="form-label">Balise SEO - Titre<span class="text-danger">*</span></label>
-            <input type="text" class="form-control" id="seo_title" name="seo_title" placeholder="Titre pour le référencement SEO" required>
-        </div>
-
-        <div class="mb-3">
-            <label for="seo_description" class="form-label">Balise SEO - Description<span class="text-danger">*</span></label>
-            <textarea class="form-control" id="seo_description" name="seo_description" rows="3" placeholder="Description pour le référencement SEO" required></textarea>
-        </div>
-
-        <div class="mb-3">
-            <label for="content" class="form-label">Contenu de l'article<span class="text-danger">*</span></label>
-            <div id="editor" style="height: 300px;"></div>
-            <input type="hidden" name="content" id="content">
-        </div>
-
-        <button type="submit" class="btn btn-lg btn-dark mb-5">Créer l'article</button>
+        @include('editor.partials.article-form', ['article' => null])
     </form>
 </div>
 @endsection
@@ -64,15 +27,8 @@
 @section('scripts')
 <script src="https://cdn.quilljs.com/1.3.7/quill.min.js"></script>
 <script>
-    let quill = new Quill('#editor', {
-        theme: 'snow',
-        placeholder: 'Rédigez le contenu de votre article ici...',
-    });
-
-    let content = document.getElementById('content');
-
-    quill.on('text-change', function() {
-        content.value = quill.root.innerHTML;
-    });
+    const quill = new Quill('#editor', { theme: 'snow', placeholder: 'Rédigez le contenu de l\'article…' });
+    const content = document.getElementById('content');
+    quill.on('text-change', () => { content.value = quill.root.innerHTML; });
 </script>
 @endsection

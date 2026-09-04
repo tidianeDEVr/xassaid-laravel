@@ -9,6 +9,18 @@ REMOTE_PATH = /home/$(REMOTE_USER)/SERVER/xassaid/back
 
 all: rsync deploy
 
+# Déploiement de code SANS rebuild d'image : rsync + purge des caches +
+# redémarrage du worker. Indispensable après tout changement de code des
+# jobs/helpers : le worker est un process PHP long-vivant qui garde
+# l'ancien code en mémoire tant qu'il n'est pas redémarré.
+push: rsync
+	ssh -i $(SSH_KEY) $(REMOTE_USER)@$(REMOTE_HOST) "\
+		cd $(REMOTE_PATH) && \
+		docker compose exec -T web php artisan config:clear && \
+		docker compose exec -T web php artisan route:clear && \
+		docker compose restart worker \
+	"
+
 rsync:
 	rsync -rltvz --delete --omit-dir-times \
 		-e "ssh -i $(SSH_KEY)" \
@@ -19,6 +31,10 @@ rsync:
 		--exclude "storage" \
 		--exclude "bootstrap/cache" \
 		--exclude ".env" \
+		--exclude "nginx.conf" \
+		--exclude "database/database.sqlite" \
+		--exclude ".phpunit.result.cache" \
+		--exclude ".claude" \
 		./ $(REMOTE_USER)@$(REMOTE_HOST):$(REMOTE_PATH)
 
 # Le volume `.:/var/www/html` recouvre TOUT /var/www/html par le dossier de
