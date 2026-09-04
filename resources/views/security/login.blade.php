@@ -17,7 +17,7 @@
     <div class="login">
         <div class="card">
             <div class="brand"><img src="{{ asset('logo-xassaid.png') }}" alt="Xassaid" /></div>
-            <form method="POST" action="{{ url('/login') }}">
+            <form method="POST" action="/login">
                 @csrf
                 @error('error')
                     <div class="flash err" role="alert"><i class="ri-error-warning-line"></i><div>{{ $message }}</div></div>

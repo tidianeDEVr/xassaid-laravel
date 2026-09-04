@@ -53,6 +53,11 @@ return [
         'files_uri' => env('XASSAID_FILES_URI'),
         'upload_key' => env('XASSAID_UPLOAD_KEY'),
         'audio_bitrate' => (int) env('XASSAID_AUDIO_BITRATE', 96),
+        // Binaires ffmpeg/ffprobe (vide = cherchés dans le PATH) et taille max
+        // sondée par « Santé des fichiers » pour mesurer la durée d'un audio.
+        'ffmpeg_bin' => env('FFMPEG_BIN', ''),
+        'ffprobe_bin' => env('FFPROBE_BIN', ''),
+        'max_probe_bytes' => (int) env('ANALYTICS_MAX_PROBE_BYTES', 8 * 1024 * 1024),
     ],
 
     // Service xassaid-automation (vidéos YouTube) : URL interne + jeton

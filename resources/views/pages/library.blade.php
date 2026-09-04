@@ -41,7 +41,7 @@
                                     <button class="btn btn-sm btn-icon" title="Modifier" data-open="#fileEditModal"
                                         data-action="/library/{{ $file->id }}" data-set-title="{{ $file->title }}" data-set-slug="{{ $file->slug }}"><i class="ri-edit-box-line"></i></button>
                                     @if ($isSuperAdmin)
-                                        <form class="inline" method="post" action="{{ url('/library/' . $file->id) }}" onsubmit="return confirm('Supprimer « {{ addslashes($file->title) }} » ?')">
+                                        <form class="inline" method="post" action="/library/{{ $file->id }}" onsubmit="return confirm('Supprimer « {{ addslashes($file->title) }} » ?')">
                                             @csrf @method('delete')
                                             <button class="btn btn-sm btn-danger btn-icon" type="submit" title="Supprimer"><i class="ri-delete-bin-6-line"></i></button>
                                         </form>
@@ -59,7 +59,7 @@
     </div>
 </div>
 
-<x-modal id="fileModal" title="Ajouter un PDF" form="" action="{{ url('/library') }}" :upload="true">
+<x-modal id="fileModal" title="Ajouter un PDF" form="" action="/library" :upload="true">
     <div class="field">
         <label class="req" for="fileTitle">Titre</label>
         <input type="text" required name="title" class="input" id="fileTitle" />

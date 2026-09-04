@@ -47,7 +47,7 @@
                             <td data-label="Abonnés" class="right">{{ $appUser->followers_count }}</td>
                             <td data-label="Inscrit le" class="muted small nowrap">{{ $appUser->created_at->format('d/m/Y') }}</td>
                             <td data-label="Certification">
-                                <form class="inline" method="post" action="{{ url('/app-users/' . $appUser->id . '/certify') }}"
+                                <form class="inline" method="post" action="/app-users/{{ $appUser->id }}/certify"
                                     onsubmit="return confirm('{{ $appUser->is_certified ? 'Retirer la certification de @' . $appUser->username . ' ?' : 'Certifier @' . $appUser->username . ' ? Ses vidéos seront publiées sans validation.' }}')">
                                     @csrf @method('put')
                                     <button type="submit" class="btn btn-sm {{ $appUser->is_certified ? 'btn-accent' : '' }}">
@@ -59,7 +59,7 @@
                                 <div class="btn-group">
                                     <button type="button" class="btn btn-sm" data-open="#passwordModal" data-action="/app-users/{{ $appUser->id }}/password" data-modal-title="Mot de passe de {{ '@' . $appUser->username }}"><i class="ri-lock-password-line"></i> Mot de passe</button>
                                     <button type="button" class="btn btn-sm" data-open="#avatarModal" data-action="/app-users/{{ $appUser->id }}/avatar" data-modal-title="Avatar de {{ '@' . $appUser->username }}"><i class="ri-image-line"></i> Avatar</button>
-                                    <form class="inline" method="post" action="{{ url('/app-users/' . $appUser->id) }}"
+                                    <form class="inline" method="post" action="/app-users/{{ $appUser->id }}"
                                         onsubmit="return confirm('Supprimer définitivement {{ '@' . $appUser->username }} ? Ses {{ $appUser->videos_count }} vidéo(s), commentaires et abonnements seront effacés, fichiers compris. Action irréversible.')">
                                         @csrf @method('delete')
                                         <button type="submit" class="btn btn-sm btn-danger btn-icon" title="Supprimer"><i class="ri-delete-bin-line"></i></button>
@@ -77,7 +77,7 @@
     </div>
 </div>
 
-<x-modal id="appUserModal" title="Créer un compte" form="" action="{{ url('/app-users') }}" :multipart="true">
+<x-modal id="appUserModal" title="Créer un compte" form="" action="/app-users" :multipart="true">
     <div class="row mb-2" style="flex-wrap:nowrap;align-items:flex-start">
         <img id="appUserAvatarPreview" class="avatar" style="width:56px;height:56px;display:none" src="" alt="" />
         <div class="field grow">

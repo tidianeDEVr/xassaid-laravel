@@ -59,7 +59,7 @@
                                     <button class="btn btn-sm btn-icon" title="Modifier" data-open="#categoryEditModal"
                                         data-action="/categories/audios/{{ $category->id }}" data-set-title="{{ $category->title }}" data-set-type="{{ $category->type }}"><i class="ri-edit-box-line"></i></button>
                                     @if ($isSuperAdmin)
-                                        <form class="inline" method="post" action="{{ url('/categories/audios/' . $category->id) }}" onsubmit="return confirm('Supprimer la catégorie « {{ addslashes($category->title) }} » ?')">
+                                        <form class="inline" method="post" action="/categories/audios/{{ $category->id }}" onsubmit="return confirm('Supprimer la catégorie « {{ addslashes($category->title) }} » ?')">
                                             @csrf @method('delete')
                                             <button class="btn btn-sm btn-danger btn-icon" type="submit" title="Supprimer"><i class="ri-delete-bin-6-line"></i></button>
                                         </form>
@@ -77,7 +77,7 @@
     </div>
 </div>
 
-<x-modal id="categoryModal" title="Ajouter une catégorie" form="" action="{{ url('/categories/audios') }}" :multipart="true">
+<x-modal id="categoryModal" title="Ajouter une catégorie" form="" action="/categories/audios" :multipart="true">
     <div class="field">
         <label class="req" for="categoryTitle">Titre</label>
         <input type="text" name="title" required class="input" id="categoryTitle" />

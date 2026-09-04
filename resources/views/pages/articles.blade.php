@@ -47,7 +47,7 @@
                                 <div class="btn-group">
                                     <a class="btn btn-sm btn-icon" title="Modifier" href="{{ url('/articles/' . $article->id . '/edit') }}"><i class="ri-edit-box-line"></i></a>
                                     @if ($isSuperAdmin)
-                                        <form class="inline" method="post" action="{{ url('/articles/' . $article->id) }}" onsubmit="return confirm('Supprimer l\'article « {{ addslashes($article->title) }} » ?')">
+                                        <form class="inline" method="post" action="/articles/{{ $article->id }}" onsubmit="return confirm('Supprimer l\'article « {{ addslashes($article->title) }} » ?')">
                                             @csrf @method('delete')
                                             <button class="btn btn-sm btn-danger btn-icon" type="submit" title="Supprimer"><i class="ri-delete-bin-6-line"></i></button>
                                         </form>

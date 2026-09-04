@@ -24,6 +24,7 @@ class TranscodeVideoJob implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable;
 
     public int $tries = 2;
+
     public int $timeout = 1200;
 
     /** Durée maximale acceptée pour une vidéo du feed. */
@@ -44,30 +45,32 @@ class TranscodeVideoJob implements ShouldQueue
     public function __construct(
         public int $videoId,
         public bool $publishDirectly = false,
-    ) {
-    }
+    ) {}
 
     public function handle(): void
     {
         $video = Video::find($this->videoId);
-        if (!$video || $video->status !== Video::STATUS_PROCESSING) {
+        if (! $video || $video->status !== Video::STATUS_PROCESSING) {
             return;
         }
 
         $source = Storage::disk('local')->path($video->original_path);
-        if (!is_file($source)) {
+        if (! is_file($source)) {
             $this->markFailed($video, 'Fichier original introuvable.');
+
             return;
         }
 
         $probe = $this->probe($source);
         if ($probe === null) {
             $this->markFailed($video, 'Impossible de lire la vidéo (ffprobe).');
+
             return;
         }
 
         if ($probe['duration'] > self::MAX_DURATION_SECONDS) {
             $this->markFailed($video, 'Vidéo trop longue (5 minutes maximum).');
+
             return;
         }
 
@@ -84,9 +87,9 @@ class TranscodeVideoJob implements ShouldQueue
         // Tout est produit dans un dossier de travail local (ffmpeg a besoin
         // du filesystem), puis publié d'un bloc sur le disque média
         // (public en dev, S3 en prod).
-        $outputDir = 'videos/' . $video->id;
-        $workDir = Storage::disk('local')->path('transcode-tmp/' . $video->id);
-        Storage::disk('local')->deleteDirectory('transcode-tmp/' . $video->id);
+        $outputDir = 'videos/'.$video->id;
+        $workDir = Storage::disk('local')->path('transcode-tmp/'.$video->id);
+        Storage::disk('local')->deleteDirectory('transcode-tmp/'.$video->id);
 
         $renditions = [];
         foreach (array_values($targets) as $i => $target) {
@@ -94,7 +97,7 @@ class TranscodeVideoJob implements ShouldQueue
 
             $scale = $portrait ? "scale=$target:-2" : "scale=-2:$target";
             $dest = "$workDir/v$i";
-            if (!is_dir($dest)) {
+            if (! is_dir($dest)) {
                 mkdir($dest, 0775, true);
             }
 
@@ -102,11 +105,11 @@ class TranscodeVideoJob implements ShouldQueue
                 $this->ffmpegBin(), '-y', '-i', $source,
                 '-vf', $scale,
                 '-c:v', 'libx264', '-profile:v', 'main', '-pix_fmt', 'yuv420p',
-                '-b:v', $videoKbps . 'k',
-                '-maxrate', (int) round($videoKbps * 1.07) . 'k',
-                '-bufsize', ($videoKbps * 2) . 'k',
+                '-b:v', $videoKbps.'k',
+                '-maxrate', (int) round($videoKbps * 1.07).'k',
+                '-bufsize', ($videoKbps * 2).'k',
                 '-preset', 'veryfast', '-g', '48', '-keyint_min', '48', '-sc_threshold', '0',
-                '-c:a', 'aac', '-b:a', $audioKbps . 'k', '-ac', '2', '-ar', '44100',
+                '-c:a', 'aac', '-b:a', $audioKbps.'k', '-ac', '2', '-ar', '44100',
                 '-f', 'hls', '-hls_time', '4', '-hls_playlist_type', 'vod',
                 '-hls_segment_filename', "$dest/seg_%03d.ts",
                 "$dest/index.m3u8",
@@ -114,19 +117,20 @@ class TranscodeVideoJob implements ShouldQueue
             $process->setTimeout($this->timeout - 60);
             $process->run();
 
-            if (!$process->isSuccessful() || !is_file("$dest/index.m3u8")) {
+            if (! $process->isSuccessful() || ! is_file("$dest/index.m3u8")) {
                 Log::error('Transcodage échoué', [
                     'video_id' => $video->id,
                     'target' => $target,
                     'stderr' => self::tailOf($process->getErrorOutput()),
                 ]);
-                Storage::disk('local')->deleteDirectory('transcode-tmp/' . $video->id);
+                Storage::disk('local')->deleteDirectory('transcode-tmp/'.$video->id);
                 $this->markFailed($video, "Le transcodage a échoué ({$target}p).");
+
                 return;
             }
 
             $renditions[] = [
-                'name' => $target . 'p',
+                'name' => $target.'p',
                 'playlist' => "v$i/index.m3u8",
                 'width' => $portrait ? $target : $this->scaledLargeSide($probe, $target),
                 'height' => $portrait ? $this->scaledLargeSide($probe, $target) : $target,
@@ -161,7 +165,7 @@ class TranscodeVideoJob implements ShouldQueue
         }
 
         // L'original ne sert plus : le disque du VPS est la contrainte.
-        Storage::disk('local')->deleteDirectory('videos-src/' . $video->id);
+        Storage::disk('local')->deleteDirectory('videos-src/'.$video->id);
     }
 
     public function failed(?\Throwable $exception): void
@@ -178,8 +182,8 @@ class TranscodeVideoJob implements ShouldQueue
 
     /**
      * @return array{duration: float, width: int, height: int}|null
-     *         width/height sont les dimensions D'AFFICHAGE (rotation appliquée,
-     *         comme le fait ffmpeg à l'encodage).
+     *                                                              width/height sont les dimensions D'AFFICHAGE (rotation appliquée,
+     *                                                              comme le fait ffmpeg à l'encodage).
      */
     private function probe(string $source): ?array
     {
@@ -192,7 +196,7 @@ class TranscodeVideoJob implements ShouldQueue
         $process->setTimeout(60);
         $process->run();
 
-        if (!$process->isSuccessful()) {
+        if (! $process->isSuccessful()) {
             return null;
         }
 
@@ -200,7 +204,7 @@ class TranscodeVideoJob implements ShouldQueue
         $stream = $data['streams'][0] ?? null;
         $duration = (float) ($data['format']['duration'] ?? 0);
 
-        if (!$stream || empty($stream['width']) || empty($stream['height']) || $duration <= 0) {
+        if (! $stream || empty($stream['width']) || empty($stream['height']) || $duration <= 0) {
             return null;
         }
 
@@ -242,7 +246,7 @@ class TranscodeVideoJob implements ShouldQueue
             $lines[] = $rendition['playlist'];
         }
 
-        return implode("\n", $lines) . "\n";
+        return implode("\n", $lines)."\n";
     }
 
     private function extractPoster(string $source, string $outputDir, int $smallSide, bool $portrait): void
@@ -275,7 +279,7 @@ class TranscodeVideoJob implements ShouldQueue
     private function buildDownloadMp4(string $outputDir): bool
     {
         $playlist = "$outputDir/v0/index.m3u8";
-        if (!is_file($playlist)) {
+        if (! is_file($playlist)) {
             return false;
         }
 
@@ -287,12 +291,13 @@ class TranscodeVideoJob implements ShouldQueue
         $process->setTimeout(120);
         $process->run();
 
-        if (!$process->isSuccessful() || !is_file("$outputDir/download.mp4")) {
+        if (! $process->isSuccessful() || ! is_file("$outputDir/download.mp4")) {
             Log::warning('Remux download.mp4 échoué', [
                 'video_id' => $this->videoId,
                 'stderr' => self::tailOf($process->getErrorOutput()),
             ]);
             @unlink("$outputDir/download.mp4");
+
             return false;
         }
 
@@ -307,7 +312,7 @@ class TranscodeVideoJob implements ShouldQueue
         ]);
 
         // Échec terminal : l'original ne sera pas retenté, on libère le disque.
-        Storage::disk('local')->deleteDirectory('videos-src/' . $video->id);
+        Storage::disk('local')->deleteDirectory('videos-src/'.$video->id);
     }
 
     private function ffmpegBin(): string
@@ -315,8 +320,8 @@ class TranscodeVideoJob implements ShouldQueue
         // Un FFMPEG_BIN pointant un chemin inexistant (ex. chemin du poste de
         // dev copié dans le .env du serveur) donnerait un exec silencieux en
         // exit 127 : on retombe sur le PATH.
-        $configured = (string) env('FFMPEG_BIN', 'ffmpeg');
-        if (str_contains($configured, '/') && !is_file($configured)) {
+        $configured = ((string) config('services.xassaid.ffmpeg_bin', '') ?: 'ffmpeg');
+        if (str_contains($configured, '/') && ! is_file($configured)) {
             return 'ffmpeg';
         }
 
@@ -325,7 +330,7 @@ class TranscodeVideoJob implements ShouldQueue
 
     private function ffprobeBin(): string
     {
-        $configured = (string) env('FFPROBE_BIN', '');
+        $configured = (string) config('services.xassaid.ffprobe_bin', '');
         if ($configured !== '') {
             return $configured;
         }

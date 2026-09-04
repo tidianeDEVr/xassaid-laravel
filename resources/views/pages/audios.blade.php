@@ -47,12 +47,12 @@
                                 <td class="actions-cell">
                                     <div class="btn-group">
                                         @if ($import->status === 'failed')
-                                            <form class="inline" method="post" action="{{ url('/audios/imports/' . $import->id . '/retry') }}">
+                                            <form class="inline" method="post" action="/audios/imports/{{ $import->id }}/retry">
                                                 @csrf
                                                 <button class="btn btn-sm" type="submit" title="Relancer"><i class="ri-restart-line"></i> Relancer</button>
                                             </form>
                                         @endif
-                                        <form class="inline" method="post" action="{{ url('/audios/imports/' . $import->id) }}" onsubmit="return confirm('Abandonner cet import ?')">
+                                        <form class="inline" method="post" action="/audios/imports/{{ $import->id }}" onsubmit="return confirm('Abandonner cet import ?')">
                                             @csrf @method('delete')
                                             <button class="btn btn-sm btn-danger btn-icon" type="submit" title="Abandonner"><i class="ri-delete-bin-6-line"></i></button>
                                         </form>
@@ -104,7 +104,7 @@
                                         data-action="/audios/{{ $audio->id }}" data-set-title="{{ $audio->title }}"
                                         data-set-category="{{ optional($audio->category)->slug }}"><i class="ri-edit-box-line"></i></button>
                                     @if ($isSuperAdmin)
-                                        <form class="inline" method="post" action="{{ url('/audios/' . $audio->id) }}" onsubmit="return confirm('Supprimer « {{ addslashes($audio->title) }} » ?')">
+                                        <form class="inline" method="post" action="/audios/{{ $audio->id }}" onsubmit="return confirm('Supprimer « {{ addslashes($audio->title) }} » ?')">
                                             @csrf @method('delete')
                                             <button class="btn btn-sm btn-danger btn-icon" type="submit" title="Supprimer"><i class="ri-delete-bin-6-line"></i></button>
                                         </form>
@@ -123,7 +123,7 @@
 </div>
 
 {{-- Ajout --}}
-<x-modal id="audioModal" title="Ajouter un audio" size="lg" form="" action="{{ url('/audios') }}" :upload="true">
+<x-modal id="audioModal" title="Ajouter un audio" size="lg" form="" action="/audios" :upload="true">
     <div class="fields-2">
         <div class="field">
             <label class="req" for="title">Titre</label>
@@ -153,7 +153,7 @@
 </x-modal>
 
 {{-- Import par liens --}}
-<x-modal id="audioImportModal" title="Importer des audios depuis des liens" size="lg" form="" action="{{ url('/audios/import') }}">
+<x-modal id="audioImportModal" title="Importer des audios depuis des liens" size="lg" form="" action="/audios/import">
     <div class="field">
         <label class="req" for="audioImportCategory">Catégorie</label>
         <select class="select" name="category_id" id="audioImportCategory" required data-search data-placeholder="Choisir une catégorie">

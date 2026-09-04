@@ -204,7 +204,7 @@ class FileHealthController extends Controller
             return response()->json(['message' => 'FFPROBE_BIN non configuré (ffprobe introuvable).'], 422);
         }
 
-        $maxProbeBytes = (int) env('ANALYTICS_MAX_PROBE_BYTES', 8 * 1024 * 1024);
+        $maxProbeBytes = (int) config('services.xassaid.max_probe_bytes', 8 * 1024 * 1024);
 
         $records = Audio::query()
             ->select(['id', 'title', 'pathToFile'])
@@ -479,12 +479,12 @@ class FileHealthController extends Controller
 
     private function resolveFfprobePath(): string
     {
-        $ffprobe = (string) env('FFPROBE_BIN', '');
+        $ffprobe = (string) config('services.xassaid.ffprobe_bin', '');
         if ($ffprobe !== '') {
             return is_file($ffprobe) ? $ffprobe : '';
         }
 
-        $ffmpeg = (string) env('FFMPEG_BIN', '');
+        $ffmpeg = (string) config('services.xassaid.ffmpeg_bin', '');
         if ($ffmpeg !== '') {
             $candidate = str_replace('ffmpeg', 'ffprobe', $ffmpeg);
 

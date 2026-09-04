@@ -139,10 +139,10 @@ class AudioController extends Controller
             $uploadFilename = $name.'.'.$optimized['extension'];
 
             // UPLOAD FILE
-            $endpoint = env('XASSAID_FILES_URI').'/upload.php';
+            $endpoint = config('services.xassaid.files_uri').'/upload.php';
             $response = Http::timeout(1000)->attach('file', fopen($optimized['path'], 'r'), $uploadFilename)
                 ->post($endpoint, [
-                    'key' => env('XASSAID_UPLOAD_KEY'),
+                    'key' => config('services.xassaid.upload_key'),
                     'filename' => $name,
                 ]);
 
@@ -181,7 +181,7 @@ class AudioController extends Controller
             $name = $baseName !== '' ? $baseName.'-'.time() : (string) time();
 
             try {
-                $optimized = MediaOptimizer::optimizeAudio($audioFile, (int) env('XASSAID_AUDIO_BITRATE', 96));
+                $optimized = MediaOptimizer::optimizeAudio($audioFile, (int) config('services.xassaid.audio_bitrate', 96));
 
                 if (! empty($optimized['error'])) {
                     Log::warning('Optimisation audio échouée, fichier original utilisé.', ['file' => $uploadFilename ?? $name, 'error' => $optimized['error']]);
@@ -190,10 +190,10 @@ class AudioController extends Controller
                 $uploadFilename = $name.'.'.$optimized['extension'];
 
                 // UPLOAD FILE
-                $endpoint = env('XASSAID_FILES_URI').'/upload.php';
+                $endpoint = config('services.xassaid.files_uri').'/upload.php';
                 $response = Http::timeout(1000)->attach('file', fopen($optimized['path'], 'r'), $uploadFilename)
                     ->post($endpoint, [
-                        'key' => env('XASSAID_UPLOAD_KEY'),
+                        'key' => config('services.xassaid.upload_key'),
                         'filename' => $name,
                     ]);
             } catch (\Throwable $e) {
@@ -262,13 +262,13 @@ class AudioController extends Controller
             }
             $baseName = MediaOptimizer::normalizeFilename(pathinfo($audioFile->getClientOriginalName(), PATHINFO_FILENAME));
             $name = $baseName !== '' ? $baseName.'-'.time() : (string) time();
-            $optimized = MediaOptimizer::optimizeAudio($audioFile, (int) env('XASSAID_AUDIO_BITRATE', 96));
+            $optimized = MediaOptimizer::optimizeAudio($audioFile, (int) config('services.xassaid.audio_bitrate', 96));
             $uploadFilename = $name.'.'.$optimized['extension'];
 
-            $endpoint = env('XASSAID_FILES_URI').'/upload.php';
+            $endpoint = config('services.xassaid.files_uri').'/upload.php';
             $response = Http::timeout(1000)->attach('file', fopen($optimized['path'], 'r'), $uploadFilename)
                 ->post($endpoint, [
-                    'key' => env('XASSAID_UPLOAD_KEY'),
+                    'key' => config('services.xassaid.upload_key'),
                     'filename' => $name,
                 ]);
 
@@ -316,10 +316,10 @@ class AudioController extends Controller
             $optimized = MediaOptimizer::optimizeImage($image, 1200, 1200, 82);
             $uploadFilename = $name.'.'.$optimized['extension'];
 
-            $endpoint = env('XASSAID_FILES_URI').'/upload.php';
+            $endpoint = config('services.xassaid.files_uri').'/upload.php';
             $response = Http::timeout(1000)->attach('file', fopen($optimized['path'], 'r'), $uploadFilename)
                 ->post($endpoint, [
-                    'key' => env('XASSAID_UPLOAD_KEY'),
+                    'key' => config('services.xassaid.upload_key'),
                     'filename' => $name,
                 ]);
 

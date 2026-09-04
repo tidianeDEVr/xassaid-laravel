@@ -42,7 +42,7 @@
                                     <button class="btn btn-sm btn-icon" title="Modifier" data-open="#userEditModal"
                                         data-action="/users/{{ $user->id }}" data-set-name="{{ $user->name }}" data-set-email="{{ $user->email }}" data-set-password=""><i class="ri-edit-box-line"></i></button>
                                     @if (auth()->id() !== $user->id)
-                                        <form class="inline" method="post" action="{{ url('/users/' . $user->id) }}" onsubmit="return confirm('Supprimer le compte de {{ addslashes($user->name) }} ?')">
+                                        <form class="inline" method="post" action="/users/{{ $user->id }}" onsubmit="return confirm('Supprimer le compte de {{ addslashes($user->name) }} ?')">
                                             @csrf @method('delete')
                                             <button class="btn btn-sm btn-danger btn-icon" type="submit" title="Supprimer"><i class="ri-delete-bin-6-line"></i></button>
                                         </form>
@@ -60,7 +60,7 @@
     </div>
 </div>
 
-<x-modal id="userModal" title="Ajouter un administrateur" form="" action="{{ url('/users') }}">
+<x-modal id="userModal" title="Ajouter un administrateur" form="" action="/users">
     <div class="fields-2">
         <div class="field">
             <label class="req" for="firstname">Prénom</label>

@@ -54,6 +54,10 @@ return [
 
     'url' => env('APP_URL', 'http://localhost'),
 
+    // Force le schéma https dans les URL générées (formulaires, assets)
+    // quand l'app tourne derrière un proxy TLS.
+    'force_https' => (bool) env('FORCE_HTTPS', false),
+
     /*
     |--------------------------------------------------------------------------
     | Application Timezone

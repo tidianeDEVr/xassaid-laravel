@@ -30,7 +30,7 @@ class MediaOptimizer
         }
 
         $info = @getimagesize($path);
-        if (!$info) {
+        if (! $info) {
             return ['path' => $path, 'extension' => $extension, 'cleanup' => false];
         }
 
@@ -46,19 +46,19 @@ class MediaOptimizer
 
         switch ($type) {
             case IMAGETYPE_JPEG:
-                if (!function_exists('imagecreatefromjpeg')) {
+                if (! function_exists('imagecreatefromjpeg')) {
                     return ['path' => $path, 'extension' => $extension, 'cleanup' => false];
                 }
                 $source = imagecreatefromjpeg($path);
                 break;
             case IMAGETYPE_PNG:
-                if (!function_exists('imagecreatefrompng')) {
+                if (! function_exists('imagecreatefrompng')) {
                     return ['path' => $path, 'extension' => $extension, 'cleanup' => false];
                 }
                 $source = imagecreatefrompng($path);
                 break;
             case IMAGETYPE_WEBP:
-                if (!function_exists('imagecreatefromwebp')) {
+                if (! function_exists('imagecreatefromwebp')) {
                     return ['path' => $path, 'extension' => $extension, 'cleanup' => false];
                 }
                 $source = imagecreatefromwebp($path);
@@ -67,11 +67,11 @@ class MediaOptimizer
                 return ['path' => $path, 'extension' => $extension, 'cleanup' => false];
         }
 
-        if (!$source) {
+        if (! $source) {
             return ['path' => $path, 'extension' => $extension, 'cleanup' => false];
         }
 
-        if (!function_exists('imagecreatetruecolor')) {
+        if (! function_exists('imagecreatetruecolor')) {
             return ['path' => $path, 'extension' => $extension, 'cleanup' => false];
         }
         $dest = imagecreatetruecolor($newWidth, $newHeight);
@@ -96,6 +96,7 @@ class MediaOptimizer
                 } else {
                     imagedestroy($dest);
                     imagedestroy($source);
+
                     return ['path' => $path, 'extension' => $extension, 'cleanup' => false];
                 }
                 break;
@@ -112,13 +113,13 @@ class MediaOptimizer
      * {$size}x{$size} (600 par défaut), sortie JPEG.
      *
      * @return array{path: string, extension: string, cleanup: bool}|null
-     *         null si l'image est illisible.
+     *                                                                    null si l'image est illisible.
      */
     public static function squareAvatar(UploadedFile $file, int $size = 600, int $quality = 85): ?array
     {
         $path = $file->getPathname();
         $info = @getimagesize($path);
-        if (!$info) {
+        if (! $info) {
             return null;
         }
 
@@ -129,7 +130,7 @@ class MediaOptimizer
             IMAGETYPE_WEBP => function_exists('imagecreatefromwebp') ? @imagecreatefromwebp($path) : null,
             default => null,
         };
-        if (!$source) {
+        if (! $source) {
             return null;
         }
 
@@ -160,18 +161,18 @@ class MediaOptimizer
     {
         $path = $file->getPathname();
         $extension = strtolower($file->getClientOriginalExtension());
-        $ffmpeg = env('FFMPEG_BIN');
+        $ffmpeg = config('services.xassaid.ffmpeg_bin') ?: null;
 
-        if (!$ffmpeg) {
+        if (! $ffmpeg) {
             return ['path' => $path, 'extension' => $extension, 'cleanup' => false, 'error' => 'FFMPEG_BIN non configuré : audio envoyé sans compression.'];
         }
 
         // Chemin inexistant (ex. .env copié d'une autre machine) : PATH.
-        if (str_contains($ffmpeg, '/') && !is_file($ffmpeg)) {
+        if (str_contains($ffmpeg, '/') && ! is_file($ffmpeg)) {
             $ffmpeg = 'ffmpeg';
         }
 
-        $output = tempnam(sys_get_temp_dir(), 'aud_') . '.mp3';
+        $output = tempnam(sys_get_temp_dir(), 'aud_').'.mp3';
 
         $process = new Process([
             $ffmpeg,
@@ -179,7 +180,7 @@ class MediaOptimizer
             '-i',
             $path,
             '-b:a',
-            $bitrateKbps . 'k',
+            $bitrateKbps.'k',
             '-ac',
             '2',
             '-ar',
@@ -195,7 +196,7 @@ class MediaOptimizer
                 @unlink($output);
             }
 
-            return ['path' => $path, 'extension' => $extension, 'cleanup' => false, 'error' => 'FFmpeg : ' . $e->getMessage()];
+            return ['path' => $path, 'extension' => $extension, 'cleanup' => false, 'error' => 'FFmpeg : '.$e->getMessage()];
         }
 
         if ($process->isSuccessful() && file_exists($output) && filesize($output) > 0) {
@@ -207,11 +208,11 @@ class MediaOptimizer
         }
 
         $stderr = trim($process->getErrorOutput());
-        $error = 'FFmpeg a échoué (code ' . $process->getExitCode() . ')';
+        $error = 'FFmpeg a échoué (code '.$process->getExitCode().')';
         if ($stderr !== '') {
             // FFmpeg est très verbeux : on ne garde que les dernières lignes, les plus utiles
             $lines = preg_split('/\r?\n/', $stderr);
-            $error .= ' : ' . implode(' | ', array_slice($lines, -3));
+            $error .= ' : '.implode(' | ', array_slice($lines, -3));
         }
 
         return ['path' => $path, 'extension' => $extension, 'cleanup' => false, 'error' => $error];

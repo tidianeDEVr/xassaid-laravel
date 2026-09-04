@@ -84,19 +84,19 @@
                                             data-modal-title="{{ $video->author?->display_name }} — {{ \Illuminate\Support\Str::limit($video->description, 60) }}"><i class="ri-play-circle-line"></i></button>
                                     @endif
                                     @if ($video->status === 'failed' && $video->source_url)
-                                        <form class="inline" method="post" action="{{ url('/videos/' . $video->id . '/retry') }}" onsubmit="return confirm('Relancer l\'import de cette vidéo ?')">
+                                        <form class="inline" method="post" action="/videos/{{ $video->id }}/retry" onsubmit="return confirm('Relancer l\'import de cette vidéo ?')">
                                             @csrf
                                             <button class="btn btn-sm" type="submit"><i class="ri-restart-line"></i> Relancer</button>
                                         </form>
                                     @endif
                                     @if ($video->status === 'pending_review')
-                                        <form class="inline" method="post" action="{{ url('/videos/' . $video->id . '/approve') }}" onsubmit="return confirm('Publier cette vidéo ?')">
+                                        <form class="inline" method="post" action="/videos/{{ $video->id }}/approve" onsubmit="return confirm('Publier cette vidéo ?')">
                                             @csrf
                                             <button class="btn btn-sm btn-accent" type="submit"><i class="ri-check-line"></i> Publier</button>
                                         </form>
                                         <button class="btn btn-sm btn-danger" data-open="#videoRejectModal" data-action="/videos/{{ $video->id }}/reject"><i class="ri-close-line"></i> Rejeter</button>
                                     @endif
-                                    <form class="inline" method="post" action="{{ url('/videos/' . $video->id) }}" onsubmit="return confirm('Supprimer définitivement cette vidéo et ses fichiers ?')">
+                                    <form class="inline" method="post" action="/videos/{{ $video->id }}" onsubmit="return confirm('Supprimer définitivement cette vidéo et ses fichiers ?')">
                                         @csrf @method('delete')
                                         <button class="btn btn-sm btn-danger btn-icon" type="submit" title="Supprimer"><i class="ri-delete-bin-6-line"></i></button>
                                     </form>
@@ -129,7 +129,7 @@
     </x-slot:footer>
 </x-modal>
 
-<x-modal id="importModal" title="Importer des vidéos" size="lg" form="" action="{{ url('/videos/import') }}">
+<x-modal id="importModal" title="Importer des vidéos" size="lg" form="" action="/videos/import">
     <div class="field">
         <label class="req" for="importAccount">Publier sur le compte</label>
         <select name="app_user_id" id="importAccount" class="select" required data-search data-placeholder="Choisir un compte">

@@ -13,7 +13,7 @@
 
     @include('partials.flash')
 
-    <form action="{{ url('/articles/' . $article->id) }}" method="POST" enctype="multipart/form-data">
+    <form action="/articles/{{ $article->id }}" method="POST" enctype="multipart/form-data">
         @csrf
         @method('put')
         @include('editor.partials.article-form', ['article' => $article])

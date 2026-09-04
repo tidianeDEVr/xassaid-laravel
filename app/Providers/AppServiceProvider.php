@@ -7,7 +7,6 @@ use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\URL;
-
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -25,7 +24,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        if (app()->environment('production') || env('FORCE_HTTPS', false)) {
+        if (app()->environment('production') || config('app.force_https')) {
             URL::forceScheme('https');
         }
 
@@ -55,58 +54,58 @@ class AppServiceProvider extends ServiceProvider
     {
         // Création de compte : le coût principal est le spam de pseudos.
         $limiter->for('app-register', fn (Request $request) => [
-            self::limit(Limit::perMinute(3)->by('reg-m:' . $request->ip())),
-            self::limit(Limit::perHour(5)->by('reg-h:' . $request->ip())),
-            self::limit(Limit::perDay(10)->by('reg-d:' . $request->ip())),
+            self::limit(Limit::perMinute(3)->by('reg-m:'.$request->ip())),
+            self::limit(Limit::perHour(5)->by('reg-h:'.$request->ip())),
+            self::limit(Limit::perDay(10)->by('reg-d:'.$request->ip())),
         ]);
 
         // Connexion : bloque le bourrage de mots de passe sur un pseudo donné
         // sans verrouiller tout un réseau partagé.
         $limiter->for('app-login', fn (Request $request) => [
             self::limit(Limit::perMinute(5)->by(
-                'log-u:' . $request->ip() . '|' . strtolower(trim((string) $request->input('username'))),
+                'log-u:'.$request->ip().'|'.strtolower(trim((string) $request->input('username'))),
             )),
-            self::limit(Limit::perMinute(20)->by('log-i:' . $request->ip())),
+            self::limit(Limit::perMinute(20)->by('log-i:'.$request->ip())),
         ]);
 
         // Publication : transcodage = CPU, c'est la ressource la plus chère.
         $limiter->for('app-video', fn (Request $request) => [
-            self::limit(Limit::perHour(5)->by('vid-h:' . self::actor($request))),
-            self::limit(Limit::perDay(20)->by('vid-d:' . self::actor($request))),
+            self::limit(Limit::perHour(5)->by('vid-h:'.self::actor($request))),
+            self::limit(Limit::perDay(20)->by('vid-d:'.self::actor($request))),
         ]);
 
         $limiter->for('app-comment', fn (Request $request) => [
-            self::limit(Limit::perMinute(8)->by('com-m:' . self::actor($request))),
-            self::limit(Limit::perHour(60)->by('com-h:' . self::actor($request))),
+            self::limit(Limit::perMinute(8)->by('com-m:'.self::actor($request))),
+            self::limit(Limit::perHour(60)->by('com-h:'.self::actor($request))),
         ]);
 
         // Likes / abonnements : généreux (l'utilisateur peut enchaîner), mais
         // borné pour empêcher le gonflage automatisé des compteurs.
         $limiter->for('app-interaction', fn (Request $request) => [
-            self::limit(Limit::perMinute(60)->by('int-m:' . self::actor($request))),
-            self::limit(Limit::perHour(600)->by('int-h:' . self::actor($request))),
+            self::limit(Limit::perMinute(60)->by('int-m:'.self::actor($request))),
+            self::limit(Limit::perHour(600)->by('int-h:'.self::actor($request))),
         ]);
 
         $limiter->for('app-avatar', fn (Request $request) => [
-            self::limit(Limit::perHour(6)->by('ava:' . self::actor($request))),
+            self::limit(Limit::perHour(6)->by('ava:'.self::actor($request))),
         ]);
 
         // Comptage de vues : public, donc par IP.
         $limiter->for('app-view', fn (Request $request) => [
-            self::limit(Limit::perMinute(60)->by('view:' . $request->ip())),
+            self::limit(Limit::perMinute(60)->by('view:'.$request->ip())),
         ]);
 
         // Lectures publiques (feed, commentaires, profils) : plafond large,
         // uniquement là pour absorber un client qui boucle.
         $limiter->for('app-read', fn (Request $request) => [
-            self::limit(Limit::perMinute(120)->by('read:' . self::actor($request))),
+            self::limit(Limit::perMinute(120)->by('read:'.self::actor($request))),
         ]);
     }
 
     /** Compte connecté si le token est valide, sinon l'IP. */
     private static function actor(Request $request): string
     {
-        return ($user = $request->user()) ? 'u' . $user->id : 'ip' . $request->ip();
+        return ($user = $request->user()) ? 'u'.$user->id : 'ip'.$request->ip();
     }
 
     /** Réponse 429 en JSON, message lisible côté application. */

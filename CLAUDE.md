@@ -80,6 +80,10 @@ All content models use slug-based URLs. The `generateSlug()` method is in the ba
 - `/file/{slug}`, `/files/page/{page}` - File endpoints
 - `/audios/category/{category}`, `/audios/{type}` - Audio endpoints
 
+## Configuration rule
+
+Never call `env()` outside `config/*.php`: production runs with a cached config (`make cache`), where `env()` returns null. Read values through `config('services.xassaid.*')` / `config('app.force_https')` and add new variables to `config/services.php` first.
+
 ## Key Environment Variables
 
 ```
@@ -87,7 +91,7 @@ XASSAID_FILES_URI=          # External file upload endpoint
 XASSAID_UPLOAD_KEY=         # API key for file upload service
 XASSAID_AUDIO_BITRATE=96    # Audio compression bitrate (kbps)
 SCOUT_DRIVER=algolia        # Search driver
-FORCE_HTTPS=false           # Force HTTPS in production
+FORCE_HTTPS=false           # Force https in generated URLs (set to true behind the TLS proxy in production)
 ```
 
 ## Docker

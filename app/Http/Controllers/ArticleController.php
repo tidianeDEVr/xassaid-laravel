@@ -45,10 +45,10 @@ class ArticleController extends Controller
             $optimized = MediaOptimizer::optimizeImage($image, 1600, 1600, 82);
             $uploadFilename = $name.'.'.$optimized['extension'];
 
-            $endpoint = env('XASSAID_FILES_URI').'/upload.php';
+            $endpoint = config('services.xassaid.files_uri').'/upload.php';
             $response = Http::timeout(1000)->attach('file', fopen($optimized['path'], 'r'), $uploadFilename)
                 ->post($endpoint, [
-                    'key' => env('XASSAID_UPLOAD_KEY'),
+                    'key' => config('services.xassaid.upload_key'),
                     'filename' => $name,
                 ]);
 
@@ -92,10 +92,10 @@ class ArticleController extends Controller
             $optimized = MediaOptimizer::optimizeImage($image, 1600, 1600, 82);
             $uploadFilename = $name.'.'.$optimized['extension'];
 
-            $endpoint = env('XASSAID_FILES_URI').'/upload.php';
+            $endpoint = config('services.xassaid.files_uri').'/upload.php';
             $response = Http::timeout(1000)->attach('file', fopen($optimized['path'], 'r'), $uploadFilename)
                 ->post($endpoint, [
-                    'key' => env('XASSAID_UPLOAD_KEY'),
+                    'key' => config('services.xassaid.upload_key'),
                     'filename' => $name,
                 ]);
 
