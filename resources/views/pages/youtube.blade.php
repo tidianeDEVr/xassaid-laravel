@@ -137,7 +137,8 @@ async function refreshStatus() {
         <tr><td>Quota API estimé</td><td>${q.units} / ${sc.quota_limit} unités</td></tr>
         <tr><td>Plage horaire</td><td>${sc.window}</td></tr>
         <tr><td>Dernière publication</td><td>${fmtD(s.last_upload_at)}</td></tr>
-        <tr><td>Jeton YouTube</td><td>${s.token_present ? '<span style="color:var(--accent-ink)">présent</span>' : '<span style="color:var(--danger)">absent</span>'}</td></tr></table>`;
+        <tr><td>Jeton YouTube</td><td>${s.token_error ? '<span style="color:var(--danger)">expiré / révoqué</span>' : s.token_present ? '<span style="color:var(--accent-ink)">valide</span>' : '<span style="color:var(--danger)">absent</span>'}</td></tr></table>
+        ${s.token_error ? `<div class="err mt-1">${esc(s.token_error)}</div>` : ''}`;
     $('#pauseBtn').innerHTML = s.paused ? '<i class="ri-play-line"></i> Reprendre' : '<i class="ri-pause-line"></i> Mettre en pause';
     $('#pauseBtn').onclick = () => post(s.paused ? '/resume' : '/pause');
 }
